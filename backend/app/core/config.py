@@ -1,5 +1,5 @@
 from importlib.metadata import version
-from typing import Any
+from typing import Any, Literal
 
 from pydantic_settings import (
     BaseSettings,
@@ -22,6 +22,8 @@ class Settings(BaseSettings):
     app_name: str = "OpenCase"
     app_version: str = version("opencase")
     debug: bool = False
+    log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] = "INFO"
+    log_output: Literal["stdout", "stderr"] = "stdout"
     deployment_mode: str = "airgapped"
 
     model_config = SettingsConfigDict(

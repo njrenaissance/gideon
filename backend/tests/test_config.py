@@ -17,6 +17,8 @@ DEFAULTS = {
     "app_name": "OpenCase",
     "app_version": version("opencase"),
     "debug": False,
+    "log_level": "INFO",
+    "log_output": "stdout",
     "deployment_mode": "airgapped",
 }
 
