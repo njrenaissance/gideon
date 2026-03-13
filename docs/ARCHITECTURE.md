@@ -15,6 +15,7 @@ Single-tenant. One OpenCase instance per firm. Two modes:
 ```text
 Browser → Next.js → FastAPI → PostgreSQL
                              → Qdrant
+                             → MinIO (S3)
                              → Ollama
                              → Redis → Celery + Beat → Tika + Tesseract
                                                       → celery-tmp (ephemeral)
@@ -27,6 +28,7 @@ Browser → Next.js → FastAPI → PostgreSQL
 | --- | --- | --- |
 | **Next.js** | UI, session mgmt, httpOnly cookie auth, proxies to FastAPI | 3000 |
 | **FastAPI** | API, JWT auth, RBAC, audit logging, LangChain RAG | 8000 (internal) |
+| **MinIO** | S3-compatible object store for original documents | 9000 (internal) |
 | **Ollama** | Local LLM + embeddings (Llama 3 8B / Mistral 7B; nomic-embed-text) | 11434 (internal) |
 | **PostgreSQL** | Relational store — matters, documents, users, audit log | 5432 (internal) |
 | **Qdrant** | Vector store — single collection, permission-filtered | 6333 (internal) |
@@ -51,6 +53,7 @@ separate service.
 │  └──────────┘  └────┬─────┘  └────────────┘         │
 │       ▲              │                               │
 │       │              ├───────▶ Qdrant :6333           │
+│       │              ├───────▶ MinIO :9000            │
 │       │              ├───────▶ Ollama :11434          │
 │       │              └───────▶ Redis :6379            │
 │       │                           │                  │
@@ -90,6 +93,8 @@ backend/
 │   │   ├── pipeline.py
 │   │   ├── embedder.py
 │   │   └── citations.py
+│   ├── storage/        # Document object storage
+│   │   └── s3.py             # MinIO S3 client
 │   ├── ingestion/      # Document processing
 │   │   ├── parser.py         # Tika/Tesseract
 │   │   ├── chunker.py
@@ -142,10 +147,13 @@ frontend/
 Upload / Cloud Poll
        │
        ▼
-  Tika + Tesseract (text extraction + OCR)
+  SHA-256 hash (dedup check against PostgreSQL)
        │
        ▼
-  SHA-256 hash (dedup check against PostgreSQL)
+  MinIO S3 (store original file: /{firm}/{matter}/{doc})
+       │
+       ▼
+  Tika + Tesseract (text extraction + OCR)
        │
        ▼
   Chunker (split into passages)
@@ -159,6 +167,32 @@ Upload / Cloud Poll
        ▼
   PostgreSQL (document metadata + audit log entry)
 ```
+
+## Document Storage
+
+All original files are stored in MinIO (S3-compatible
+object storage) regardless of ingestion source. This
+gives OpenCase full control over document lifecycle,
+including legal hold enforcement.
+
+### Bucket Layout
+
+```text
+opencase/
+  {firm_id}/
+    {matter_id}/
+      {document_id}/original.{ext}
+```
+
+### Storage Rules
+
+- Original file is preserved as-is — never modified
+- Legal hold is enforced at this layer: held documents
+  cannot be deleted or overwritten
+- Both manual uploads and cloud-ingested files end up
+  here
+- OneDrive/SharePoint is read-only — OpenCase never
+  writes back to cloud storage
 
 Every vector in Qdrant carries this permission payload:
 

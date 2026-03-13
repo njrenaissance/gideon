@@ -26,13 +26,14 @@ License: **Apache 2.0**
   - *Internet-accessible*: firm-controlled server or
     private cloud VPC; enables optional scheduled cloud
     storage ingestion
-- **Seven Docker Compose services** (see below)
+- **Eight Docker Compose services** (see below)
 
 ### Service Topology
 
 ```text
 Browser → Next.js → FastAPI → PostgreSQL
                              → Qdrant
+                             → MinIO (S3)
                              → Ollama
                              → Redis → Celery + Beat
 ```
@@ -41,6 +42,7 @@ Browser → Next.js → FastAPI → PostgreSQL
 | --- | --- |
 | Next.js | UI, session management, httpOnly cookie, proxies to FastAPI |
 | FastAPI | API, JWT auth, RBAC, audit logging, LangChain RAG (in-process) |
+| MinIO | S3-compatible object store for original documents |
 | Ollama | Local LLM + embeddings (Llama 3 8B / Mistral 7B; nomic-embed-text) |
 | PostgreSQL | Relational store — matters, documents, users, audit log, metadata |
 | Qdrant | Vector store — single collection, permission-filtered on every query |
@@ -67,6 +69,7 @@ not a separate service.
 | LLM runtime | Ollama |
 | Default LLM | Llama 3 8B or Mistral 7B |
 | Embedding model | nomic-embed-text via Ollama |
+| Document storage | MinIO (S3-compatible object store) |
 | Relational DB | PostgreSQL |
 | Background jobs | Celery + Redis (Celery Beat for scheduling) |
 | Document parsing | Apache Tika + Tesseract OCR |
@@ -142,6 +145,7 @@ backend/
 └── app/
     ├── api/          # routers
     ├── core/         # auth, permissions, audit
+    ├── storage/      # MinIO S3 client
     ├── rag/          # pipeline, embedder, citations
     ├── ingestion/    # parser, chunker, deduplicator
     ├── workers/      # celery tasks

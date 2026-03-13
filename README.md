@@ -39,11 +39,12 @@ firms. OpenCase levels the playing field with:
 
 ## Technology Stack
 
-Seven Docker Compose services running on commodity
+Eight Docker Compose services running on commodity
 hardware:
 
 - **Next.js** — UI and session management
 - **FastAPI** — API, auth, RAG pipeline (LangChain)
+- **MinIO** — S3-compatible document object storage
 - **Ollama** — local LLM inference and embeddings
 - **PostgreSQL** — relational data store
 - **Qdrant** — permission-filtered vector search

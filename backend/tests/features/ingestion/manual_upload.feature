@@ -11,7 +11,9 @@ Feature: Manual document upload
   Scenario: Upload a PDF document
     When I upload "discovery_production_001.pdf" to matter "People v. Smith"
     Then the document should be stored with status "processed"
+    And the original file should be stored in S3
     And the document should have a SHA-256 content hash
+    And the document should have an ingestion timestamp
     And an audit log entry should record the upload
 
   Scenario: Upload a Word document
