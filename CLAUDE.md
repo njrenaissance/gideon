@@ -26,7 +26,7 @@ License: **Apache 2.0**
   - *Internet-accessible*: firm-controlled server or
     private cloud VPC; enables optional scheduled cloud
     storage ingestion
-- **Eight Docker Compose services** (see below)
+- **Eleven Docker Compose services** (see below)
 
 ### Service Topology
 
@@ -35,7 +35,13 @@ Browser → Next.js → FastAPI → PostgreSQL
                              → Qdrant
                              → MinIO (S3)
                              → Ollama
-                             → Redis → Celery + Beat
+                             → Worker Queue ┐
+                               ├ Redis      │
+                               ├ Celery Worker
+                               ├ Celery Beat│
+                               ├ Flower     │
+                               └ PostgreSQL (tasks)
+                                            ┘
 ```
 
 | Service | Role |
@@ -44,10 +50,13 @@ Browser → Next.js → FastAPI → PostgreSQL
 | FastAPI | API, JWT auth, RBAC, audit logging, LangChain RAG (in-process) |
 | MinIO | S3-compatible object store for original documents |
 | Ollama | Local LLM + embeddings (Llama 3 8B / Mistral 7B; nomic-embed-text) |
-| PostgreSQL | Relational store — matters, documents, users, audit log, metadata |
+| PostgreSQL (API) | Relational store — matters, documents, users, audit log, metadata |
+| PostgreSQL (tasks) | Worker Queue task lifecycle records — separate instance for fault isolation |
 | Qdrant | Vector store — single collection, permission-filtered on every query |
 | Redis | Task queue (Celery broker) + cache |
-| Celery + Beat | Background workers — ingestion, deadlines, audit, legal hold |
+| Celery Worker | Background task execution — ingestion, deadlines, audit, legal hold |
+| Celery Beat | Scheduled task submission (cron-based) |
+| Flower | Celery monitoring UI (queue depth, worker status, task management) |
 
 **FastAPI is never exposed on a public port.**
 Only Next.js can reach it from outside the Docker
