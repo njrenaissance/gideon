@@ -28,11 +28,11 @@ graph LR
         Celery --> TmpVol[(celery-tmp)]
     end
 
-    Celery -.->|internet mode only| SharePoint[SharePoint]
+    Celery -.->|internet mode only| OneDrive[OneDrive / SharePoint]
 
     style docker fill:#f8f9fa,stroke:#333
     style Browser fill:#fff,stroke:#333
-    style SharePoint fill:#fff,stroke:#999,stroke-dasharray: 5 5
+    style OneDrive fill:#fff,stroke:#999,stroke-dasharray: 5 5
 ```
 
 ### Services
