@@ -20,6 +20,13 @@ DEFAULTS = {
     "log_level": "INFO",
     "log_output": "stdout",
     "deployment_mode": "airgapped",
+    "otel": {
+        "enabled": False,
+        "exporter": "console",
+        "endpoint": "http://localhost:4318",
+        "service_name": "opencase-api",
+        "sample_rate": 1.0,
+    },
 }
 
 FIXTURES_DIR = Path(__file__).parent / "fixtures"

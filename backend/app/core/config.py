@@ -9,6 +9,18 @@ from pydantic_settings import (
 )
 
 
+class OtelSettings(BaseSettings):
+    """OpenTelemetry sub-config (OPENCASE_OTEL_ prefix)."""
+
+    enabled: bool = False
+    exporter: Literal["console", "otlp"] = "console"
+    endpoint: str = "http://localhost:4318"
+    service_name: str = "opencase-api"
+    sample_rate: float = 1.0
+
+    model_config = SettingsConfigDict(env_prefix="OPENCASE_OTEL_")
+
+
 class Settings(BaseSettings):
     """Application settings with layered loading.
 
@@ -25,6 +37,7 @@ class Settings(BaseSettings):
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] = "INFO"
     log_output: Literal["stdout", "stderr"] = "stdout"
     deployment_mode: str = "airgapped"
+    otel: OtelSettings = OtelSettings()
 
     model_config = SettingsConfigDict(
         env_prefix="OPENCASE_",
