@@ -1,0 +1,87 @@
+# OpenCase — Entity Relationship Diagram
+
+Covers the tables introduced in Feature 1.2. Tables from later features
+(documents, audit_log, witnesses, disclosure_checklist, etc.) will be added
+as each feature lands.
+
+## Feature 1 — Core Schema
+
+```mermaid
+erDiagram
+    firms {
+        uuid id PK
+        string name
+        timestamptz created_at
+    }
+
+    users {
+        uuid id PK
+        uuid firm_id FK
+        string email
+        string hashed_password
+        string title "nullable — e.g. Esq., Dr."
+        string first_name
+        string middle_initial "nullable"
+        string last_name
+        enum role "admin | attorney | paralegal | investigator"
+        bool is_active "false = account disabled, not deleted"
+        string totp_secret "nullable — AES-256-GCM ciphertext"
+        bool totp_enabled
+        timestamptz totp_verified_at "nullable"
+        int failed_login_attempts
+        timestamptz locked_until "nullable"
+        timestamptz created_at
+        timestamptz updated_at
+    }
+
+    matters {
+        uuid id PK
+        uuid firm_id FK
+        string name
+        uuid client_id
+        enum status "open | closed | archived"
+        bool legal_hold
+        timestamptz created_at
+        timestamptz updated_at
+    }
+
+    matter_access {
+        uuid user_id PK,FK
+        uuid matter_id PK,FK
+        bool view_work_product
+        timestamptz assigned_at
+    }
+
+    firms ||--o{ users : "has"
+    firms ||--o{ matters : "owns"
+    users ||--o{ matter_access : "access controlled via"
+    matters ||--o{ matter_access : "access controlled via"
+```
+
+## Key Constraints
+
+| Table | Constraint | Rule |
+| --- | --- | --- |
+| `users` | `uq_users_firm_id_email` | Email unique per firm (same email can exist across firms) |
+| `users` | `fk_users_firm_id_firms` | Cascades on firm delete |
+| `matters` | `fk_matters_firm_id_firms` | Cascades on firm delete |
+| `matter_access` | Composite PK `(user_id, matter_id)` | One access row per user/matter pair |
+| `matter_access` | `fk_matter_access_user_id_users` | Cascades on user delete |
+| `matter_access` | `fk_matter_access_matter_id_matters` | Cascades on matter delete |
+
+## Notes
+
+- All primary keys are UUID v4 — no sequential integers exposed to clients.
+- `totp_secret` stores AES-256-GCM ciphertext only — plaintext is never persisted.
+- `legal_hold` on a matter blocks document deletion in all downstream services
+  (MinIO, Qdrant, Postgres) — enforced by the Legal Hold Celery task (Feature 12).
+- `matter_access` is a **security construct**, not a business join table. It is
+  checked by `build_qdrant_filter()` on every vector query. A missing row means
+  404, not 403 — matter existence is not revealed to unauthorized users.
+- `view_work_product` defaults to `false` for all access rows. Only Admin can grant
+  it to Paralegal users; Investigators can never receive it (enforced in RBAC layer).
+- `role` on `users` is a PostgreSQL native enum (`user_role`). Four roles are fixed
+  by design — no `user_roles` lookup table. Roles are a closed set defined by the
+  permission model, not operator-configurable data.
+- `client_id` is a UUID reference to a client record. The clients table will be
+  introduced in a later feature; for now it is stored as a bare UUID.
