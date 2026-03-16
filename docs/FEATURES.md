@@ -15,6 +15,7 @@
 | 0.7c | CI: `integration-tests.yml` (pytest @integration) | Deferred |
 | 0.7d | CI: `ai-code-review.yml` (same as Signatrust_v4) | Done |
 | 0.7e | CI: `build-container.yml` (on spec/code change) | Done |
+| 0.8 | Docker Compose — PostgreSQL service (volume, healthcheck, local dev + integration test target) | Done |
 
 ## Feature 1 — API
 
