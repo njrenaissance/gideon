@@ -1,6 +1,7 @@
 from importlib.metadata import version
 from typing import Any, Literal
 
+from pydantic import Field
 from pydantic_settings import (
     BaseSettings,
     JsonConfigSettingsSource,
@@ -21,6 +22,42 @@ class OtelSettings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="OPENCASE_OTEL_")
 
 
+class AuthSettings(BaseSettings):
+    """Authentication sub-config (OPENCASE_AUTH_ prefix).
+
+    secret_key is required — the application will not start without it.
+    Generate a suitable value with: openssl rand -base64 32
+    """
+
+    secret_key: str = Field(..., min_length=1)
+    algorithm: str = "HS256"
+    access_token_expire_minutes: int = 15
+    refresh_token_expire_days: int = 7
+    totp_issuer: str = "OpenCase"
+    totp_window: int = 1
+    bcrypt_rounds: int = 12
+    login_lockout_attempts: int = 5
+    login_lockout_minutes: int = 15
+
+    model_config = SettingsConfigDict(env_prefix="OPENCASE_AUTH_")
+
+
+class DbSettings(BaseSettings):
+    """Database sub-config (OPENCASE_DB_ prefix).
+
+    url is required — the application will not start without it.
+    Example: postgresql+asyncpg://user:password@localhost:5432/opencase
+    """
+
+    url: str = Field(..., min_length=1)
+    pool_size: int = 10
+    max_overflow: int = 20
+    pool_pre_ping: bool = True
+    echo: bool = False
+
+    model_config = SettingsConfigDict(env_prefix="OPENCASE_DB_")
+
+
 class Settings(BaseSettings):
     """Application settings with layered loading.
 
@@ -38,6 +75,8 @@ class Settings(BaseSettings):
     log_output: Literal["stdout", "stderr"] = "stdout"
     deployment_mode: str = "airgapped"
     otel: OtelSettings = OtelSettings()
+    auth: AuthSettings = AuthSettings()
+    db: DbSettings = DbSettings()
 
     model_config = SettingsConfigDict(
         env_prefix="OPENCASE_",

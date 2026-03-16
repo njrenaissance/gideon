@@ -10,8 +10,13 @@ from importlib.metadata import version
 from pathlib import Path
 
 import pytest
+from dotenv import dotenv_values
+from pydantic import ValidationError
 
-from app.core.config import Settings
+from app.core.config import AuthSettings, DbSettings, Settings
+
+# Read required test values from .env.test — single source of truth.
+_ENV_TEST = dotenv_values(Path(__file__).parent.parent / ".env.test")
 
 DEFAULTS = {
     "app_name": "OpenCase",
@@ -27,6 +32,24 @@ DEFAULTS = {
         "service_name": "opencase-api",
         "sample_rate": 1.0,
     },
+    "auth": {
+        "secret_key": _ENV_TEST["OPENCASE_AUTH_SECRET_KEY"],
+        "algorithm": "HS256",
+        "access_token_expire_minutes": 15,
+        "refresh_token_expire_days": 7,
+        "totp_issuer": "OpenCase",
+        "totp_window": 1,
+        "bcrypt_rounds": 12,
+        "login_lockout_attempts": 5,
+        "login_lockout_minutes": 15,
+    },
+    "db": {
+        "url": _ENV_TEST["OPENCASE_DB_URL"],
+        "pool_size": 10,
+        "max_overflow": 20,
+        "pool_pre_ping": True,
+        "echo": False,
+    },
 }
 
 FIXTURES_DIR = Path(__file__).parent / "fixtures"
@@ -34,10 +57,14 @@ FIXTURES_DIR = Path(__file__).parent / "fixtures"
 
 @pytest.fixture(autouse=True)
 def _clean_env(monkeypatch):
-    """Remove any OPENCASE_ env vars so each test starts clean."""
+    """Remove any OPENCASE_ env vars so each test starts clean,
+    then reload required fields from .env.test."""
     for key in list(os.environ):
         if key.startswith("OPENCASE_"):
             monkeypatch.delenv(key, raising=False)
+    for key, value in _ENV_TEST.items():
+        if value is not None:
+            monkeypatch.setenv(key, value)
 
 
 def test_defaults():
@@ -93,3 +120,73 @@ def test_missing_json_is_ignored(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     cfg = Settings()
     assert cfg.model_dump() == DEFAULTS
+
+
+# ---------------------------------------------------------------------------
+# AuthSettings — tested directly so monkeypatch applies to its own env reads
+# ---------------------------------------------------------------------------
+
+
+def test_auth_missing_secret_key_raises(monkeypatch):
+    monkeypatch.delenv("OPENCASE_AUTH_SECRET_KEY", raising=False)
+    with pytest.raises(ValidationError):
+        AuthSettings()
+
+
+def test_auth_defaults(monkeypatch):
+    cfg = AuthSettings()
+    assert cfg.algorithm == "HS256"
+    assert cfg.access_token_expire_minutes == 15
+    assert cfg.refresh_token_expire_days == 7
+    assert cfg.totp_issuer == "OpenCase"
+    assert cfg.totp_window == 1
+    assert cfg.bcrypt_rounds == 12
+    assert cfg.login_lockout_attempts == 5
+    assert cfg.login_lockout_minutes == 15
+
+
+def test_auth_env_override(monkeypatch):
+    monkeypatch.setenv("OPENCASE_AUTH_ACCESS_TOKEN_EXPIRE_MINUTES", "30")
+    cfg = AuthSettings()
+    assert cfg.access_token_expire_minutes == 30
+
+
+def test_auth_prefix_isolation(monkeypatch):
+    # OPENCASE_SECRET_KEY (wrong prefix) must not satisfy OPENCASE_AUTH_SECRET_KEY
+    monkeypatch.setenv("OPENCASE_SECRET_KEY", "wrong")
+    monkeypatch.delenv("OPENCASE_AUTH_SECRET_KEY", raising=False)
+    with pytest.raises(ValidationError):
+        AuthSettings()
+
+
+# ---------------------------------------------------------------------------
+# DbSettings — tested directly so monkeypatch applies to its own env reads
+# ---------------------------------------------------------------------------
+
+
+def test_db_missing_url_raises(monkeypatch):
+    monkeypatch.delenv("OPENCASE_DB_URL", raising=False)
+    with pytest.raises(ValidationError):
+        DbSettings()
+
+
+def test_db_defaults(monkeypatch):
+    cfg = DbSettings()
+    assert cfg.pool_size == 10
+    assert cfg.max_overflow == 20
+    assert cfg.pool_pre_ping is True
+    assert cfg.echo is False
+
+
+def test_db_env_override(monkeypatch):
+    monkeypatch.setenv("OPENCASE_DB_POOL_SIZE", "20")
+    cfg = DbSettings()
+    assert cfg.pool_size == 20
+
+
+def test_db_prefix_isolation(monkeypatch):
+    # OPENCASE_URL (wrong prefix) must not satisfy OPENCASE_DB_URL
+    monkeypatch.setenv("OPENCASE_URL", "wrong")
+    monkeypatch.delenv("OPENCASE_DB_URL", raising=False)
+    with pytest.raises(ValidationError):
+        DbSettings()

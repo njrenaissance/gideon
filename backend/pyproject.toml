@@ -119,3 +119,11 @@ asyncio_mode = "auto"
 markers = [
     "integration: tests that require a running server",
 ]
+
+[tool.coverage.run]
+source = ["app"]
+omit = ["tests/*"]
+
+[tool.coverage.report]
+fail_under = 70
+show_missing = true

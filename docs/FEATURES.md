@@ -20,14 +20,13 @@
 
 | ID | Feature | Specs | Code |
 | --- | --- | --- | --- |
-| 1.0 | OpenAPI specification (openapi.yml) | Pending | Pending |
-| 1.1 | Database foundation (User, Firm, Matter models + Alembic) | Pending | Pending |
-| 1.2 | Authentication (JWT, TOTP MFA, login/logout/refresh) | Pending | Pending |
-| 1.3 | RBAC middleware (role enforcement, `build_qdrant_filter()`) | Pending | Pending |
-| 1.4 | Python REST client SDK (backend/sdk/) | Pending | Pending |
-| 1.5 | CLI (built on SDK) | Pending | Pending |
-| 1.6 | Configuration + env vars (AuthSettings, DbSettings) | Pending | Pending |
-| 1.7 | Observability (auth spans/metrics, DB tracing) | Pending | Pending |
+| 1.1 | Configuration + env vars (AuthSettings, DbSettings) | Pending | Pending |
+| 1.2 | Database foundation (User, Firm, Matter models + Alembic) | Pending | Pending |
+| 1.3 | Observability (auth spans/metrics, DB tracing) | Pending | Pending |
+| 1.4 | Authentication (JWT, TOTP MFA, login/logout/refresh) | Pending | Pending |
+| 1.5 | RBAC middleware (role enforcement, `build_qdrant_filter()`) | Pending | Pending |
+| 1.6 | Python REST client SDK (backend/sdk/) | Pending | Pending |
+| 1.7 | CLI (built on SDK) | Pending | Pending |
 
 ## Feature 2 — Worker Queue
 
