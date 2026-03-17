@@ -49,9 +49,6 @@ import logging
 from typing import TYPE_CHECKING
 
 from opentelemetry import metrics, trace
-
-if TYPE_CHECKING:
-    from fastapi import FastAPI
 from opentelemetry.sdk.metrics import MeterProvider
 from opentelemetry.sdk.metrics.export import (
     ConsoleMetricExporter,
@@ -66,6 +63,9 @@ from opentelemetry.sdk.trace.export import (
 from opentelemetry.sdk.trace.sampling import TraceIdRatioBased
 
 from app.core.config import Settings
+
+if TYPE_CHECKING:
+    from fastapi import FastAPI
 
 logger = logging.getLogger(__name__)
 
@@ -119,15 +119,18 @@ def setup_telemetry(settings: Settings) -> TracerProvider | None:
 
     # Metrics
     if settings.otel.exporter == "console":
+        interval_ms = 60000
         metric_reader = PeriodicExportingMetricReader(
             ConsoleMetricExporter(),
-            export_interval_millis=60000,
+            export_interval_millis=interval_ms,
         )
         meter_provider = MeterProvider(
             resource=resource, metric_readers=[metric_reader]
         )
         metrics.set_meter_provider(meter_provider)
-        logger.debug("Metric exporter wired: console (interval=60s)")
+        logger.debug(
+            "Metric exporter wired: console (interval=%ds)", interval_ms // 1000
+        )
 
     logger.info(
         "OpenTelemetry enabled: exporter=%s, service=%s",
@@ -154,5 +157,9 @@ def configure_instrumentation(app: "FastAPI", settings: Settings) -> None:
     from app.db.session import engine
 
     FastAPIInstrumentor.instrument_app(app)
-    SQLAlchemyInstrumentor().instrument(engine=engine)
+
+    sa_instrumentor = SQLAlchemyInstrumentor()
+    if not sa_instrumentor.is_instrumented_by(SQLAlchemyInstrumentor):
+        sa_instrumentor.instrument(engine=engine)
+
     logger.debug("OTel instrumentors wired: FastAPI + SQLAlchemy")

@@ -34,10 +34,10 @@ async def readiness_check(
     except Exception:  # noqa: BLE001
         checks["postgres"] = "error"
 
-    logger.debug("Readiness check: %s", checks)
-
     # Additional checks (redis, qdrant, minio, ollama) added as services come online.
     all_ok = all(v == "ok" for v in checks.values())
+    status = "ok" if all_ok else "degraded"
+    logger.debug("Readiness check: status=%s services=%s", status, checks)
     return {
         "status": "ok" if all_ok else "degraded",
         "services": checks,
