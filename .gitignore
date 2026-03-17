@@ -22,6 +22,9 @@ out/
 /config.json
 backend/config.json
 
+# Claude Code — developer-local settings (may contain absolute paths or credentials)
+.claude/settings.local.json
+
 # IDE
 .vscode/
 .idea/

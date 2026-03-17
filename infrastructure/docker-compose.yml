@@ -75,6 +75,11 @@ services:
       - "16686:16686"  # UI + REST query API
       - "4317:4317"    # OTLP gRPC receiver
       - "4318:4318"    # OTLP HTTP receiver
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:16686/ || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     networks:
       - opencase
     restart: unless-stopped

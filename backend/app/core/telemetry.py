@@ -152,6 +152,8 @@ def setup_telemetry(settings: Settings) -> TracerProvider | None:
     sampler = TraceIdRatioBased(settings.otel.sample_rate)
     provider = TracerProvider(resource=resource, sampler=sampler)
     logger.debug("TracerProvider created: sample_rate=%s", settings.otel.sample_rate)
+    # TODO: switch to BatchSpanProcessor for non-console exporters once
+    # integration tests are updated to account for async export timing.
     provider.add_span_processor(SimpleSpanProcessor(_create_span_exporter(settings)))
     trace.set_tracer_provider(provider)
     _tracer_provider = provider
@@ -167,6 +169,15 @@ def setup_telemetry(settings: Settings) -> TracerProvider | None:
         "MeterProvider created: interval=%ds",
         _METRIC_EXPORT_INTERVAL_MS // 1000,
     )
+
+    if settings.otel.exporter == "otlp":
+        logger.warning(
+            "OTLP metrics exporter targets Jaeger (%s/v1/metrics) which does not "
+            "ingest metrics — export errors every %ds are expected until an OTel "
+            "Collector is added. Traces are unaffected.",
+            settings.otel.endpoint,
+            _METRIC_EXPORT_INTERVAL_MS // 1000,
+        )
 
     logger.info(
         "OpenTelemetry enabled: exporter=%s, service=%s",
