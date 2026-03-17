@@ -18,7 +18,7 @@ _parsed = urlparse(settings.db.url)
 logger.debug(
     "DB engine initialised: host=%s port=%s pool_size=%d max_overflow=%d pre_ping=%s",
     _parsed.hostname,
-    _parsed.port,
+    _parsed.port or "default",
     settings.db.pool_size,
     settings.db.max_overflow,
     settings.db.pool_pre_ping,
@@ -43,4 +43,4 @@ async def get_db() -> AsyncGenerator[AsyncSession, None]:
     logger.debug("DB session opened")
     async with AsyncSessionLocal() as session:
         yield session
-    logger.debug("DB session closed")
+    logger.debug("DB session closed (committed or rolled back)")
