@@ -1957,6 +1957,7 @@ dev = [
     { name = "pytest-playwright" },
     { name = "python-dotenv" },
     { name = "ruff" },
+    { name = "types-python-jose" },
 ]
 
 [package.metadata]
@@ -2012,6 +2013,7 @@ dev = [
     { name = "pytest-playwright", specifier = ">=0.7.2" },
     { name = "python-dotenv", specifier = ">=1.0" },
     { name = "ruff", specifier = ">=0.9" },
+    { name = "types-python-jose", specifier = ">=3.3" },
 ]
 
 [[package]]

@@ -79,6 +79,7 @@ typecheck = "mypy app/ {args}"
 dev = [
     "ruff>=0.9",
     "mypy>=1.14",
+    "types-python-jose>=3.3",
     "pre-commit>=4.1",
     "pytest>=8.3",
     "pytest-bdd>=8.1",
