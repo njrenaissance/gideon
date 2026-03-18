@@ -18,6 +18,12 @@
 *Coming soon — feature specifications and Gherkin
 BDD scenarios.*
 
+### Guides
+
+- [Authentication](AUTHENTICATION.md) — JWT login flow,
+  TOTP MFA setup, token strategy, account lockout,
+  admin bootstrap
+
 ### Reference
 
 - [Settings Reference](SETTINGS.md) — all environment variables,
