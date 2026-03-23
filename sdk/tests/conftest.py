@@ -13,9 +13,7 @@ from opencase import OpenCaseClient
 Handler = Callable[[httpx.Request], httpx.Response]
 
 
-def make_jwt(
-    exp: float | None = None, extra: dict[str, object] | None = None
-) -> str:
+def make_jwt(exp: float | None = None, extra: dict[str, object] | None = None) -> str:
     """Build a fake JWT with the given exp claim (no real signature)."""
     header = base64.urlsafe_b64encode(json.dumps({"alg": "HS256"}).encode()).rstrip(
         b"="

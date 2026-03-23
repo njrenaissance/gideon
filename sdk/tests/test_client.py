@@ -130,14 +130,13 @@ def test_login_invalid_credentials() -> None:
 
 
 def test_logout_clears_tokens() -> None:
-    call_count = 0
+    sent_body: dict[str, object] = {}
 
     def handler(request: httpx.Request) -> httpx.Response:
-        nonlocal call_count
-        call_count += 1
         if request.url.path == "/auth/login":
             return httpx.Response(200, json=_token_json())
         if request.url.path == "/auth/logout":
+            sent_body.update(json.loads(request.content))
             return httpx.Response(200, json={"detail": "Logged out"})
         return httpx.Response(404)
 
@@ -148,6 +147,8 @@ def test_logout_clears_tokens() -> None:
     result = client.logout()
     assert result.detail == "Logged out"
     assert not client._auth.is_authenticated  # noqa: SLF001
+    # Verify the stored refresh token was sent to the server for revocation
+    assert sent_body["refresh_token"] == _VALID_REFRESH
 
 
 # ---------------------------------------------------------------------------
@@ -251,9 +252,7 @@ def test_auto_refresh_on_401() -> None:
         (502, ServerError),
     ],
 )
-def test_exception_mapping(
-    status: int, exc_type: type[Exception]
-) -> None:
+def test_exception_mapping(status: int, exc_type: type[Exception]) -> None:
     def handler(request: httpx.Request) -> httpx.Response:
         return httpx.Response(status, json={"detail": "error"})
 

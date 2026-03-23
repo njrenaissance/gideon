@@ -121,21 +121,16 @@ class OpenCaseClient:
         return MfaSetupResponse.model_validate(resp.json())
 
     def mfa_confirm(self, totp_code: str) -> MfaStatusResponse:
-        resp = self._request(
-            "POST", "/auth/mfa/confirm", json={"totp_code": totp_code}
-        )
+        resp = self._request("POST", "/auth/mfa/confirm", json={"totp_code": totp_code})
         return MfaStatusResponse.model_validate(resp.json())
 
     def mfa_disable(self, totp_code: str) -> MfaStatusResponse:
-        resp = self._request(
-            "POST", "/auth/mfa/disable", json={"totp_code": totp_code}
-        )
+        resp = self._request("POST", "/auth/mfa/disable", json={"totp_code": totp_code})
         return MfaStatusResponse.model_validate(resp.json())
 
     def logout(self, refresh_token: str | None = None) -> MessageResponse:
-        resp = self._request(
-            "POST", "/auth/logout", json={"refresh_token": refresh_token}
-        )
+        token = refresh_token or self._auth.refresh_token
+        resp = self._request("POST", "/auth/logout", json={"refresh_token": token})
         self._auth.clear()
         return MessageResponse.model_validate(resp.json())
 
