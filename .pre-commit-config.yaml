@@ -4,10 +4,10 @@ repos:
     hooks:
       - id: ruff-format
         args: [--check]
-        files: ^backend/
+        files: ^(backend|shared|sdk)/
       - id: ruff
         args: [--fix, --exit-non-zero-on-fix]
-        files: ^backend/
+        files: ^(backend|shared|sdk)/
 
   - repo: local
     hooks:

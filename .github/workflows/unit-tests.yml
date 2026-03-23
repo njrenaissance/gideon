@@ -42,16 +42,23 @@ jobs:
             --cov-report=json:coverage.json \
             -v
 
-      - name: Run SDK unit tests
+      - name: Run SDK unit tests with coverage
         working-directory: sdk
-        run: uv run pytest -v
+        run: |
+          uv run pytest \
+            --cov=opencase \
+            --cov-report=term-missing \
+            --cov-report=json:coverage.json \
+            -v
 
-      - name: Upload coverage artifact
+      - name: Upload coverage artifacts
         uses: actions/upload-artifact@v4
         if: always()
         with:
           name: coverage-report
-          path: backend/coverage.json
+          path: |
+            backend/coverage.json
+            sdk/coverage.json
           retention-days: 30
 
       - name: Coverage summary

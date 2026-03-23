@@ -24,8 +24,8 @@ def make_firm(**kwargs: object) -> Firm:
 def make_user(**kwargs: object) -> User:
     defaults: dict[str, object] = {
         "id": uuid.uuid4(),
-        "firm_id": kwargs.pop("firm_id", uuid.uuid4()),
-        "email": kwargs.pop("email", f"{uuid.uuid4()}@example.com"),
+        "firm_id": uuid.uuid4(),
+        "email": f"{uuid.uuid4()}@example.com",
         "hashed_password": "hashed-in-test",  # noqa: S106
         "first_name": "Test",
         "last_name": "User",
@@ -46,7 +46,7 @@ def make_user(**kwargs: object) -> User:
 def make_matter(**kwargs: object) -> Matter:
     defaults: dict[str, object] = {
         "id": uuid.uuid4(),
-        "firm_id": kwargs.pop("firm_id", uuid.uuid4()),
+        "firm_id": uuid.uuid4(),
         "name": "Test Matter",
         "client_id": uuid.uuid4(),
         "status": MatterStatus.open,

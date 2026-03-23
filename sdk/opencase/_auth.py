@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import base64
 import json
+import threading
 import time
 
 import httpx
@@ -17,6 +18,9 @@ class AuthManager:
     The manager peeks at the JWT ``exp`` claim (without signature
     verification) to avoid unnecessary 401 round-trips.  The server
     remains the authority on token validity.
+
+    All token mutations are guarded by a lock so the manager is safe
+    to share across threads.
     """
 
     _EXPIRY_BUFFER_SECONDS = 30
@@ -24,6 +28,7 @@ class AuthManager:
     def __init__(self) -> None:
         self._access_token: str | None = None
         self._refresh_token: str | None = None
+        self._lock = threading.Lock()
 
     # -- public properties ---------------------------------------------------
 
@@ -58,33 +63,45 @@ class AuthManager:
     # -- mutations -----------------------------------------------------------
 
     def store_tokens(self, access_token: str, refresh_token: str) -> None:
-        self._access_token = access_token
-        self._refresh_token = refresh_token
+        with self._lock:
+            self._access_token = access_token
+            self._refresh_token = refresh_token
 
     def clear(self) -> None:
-        self._access_token = None
-        self._refresh_token = None
+        with self._lock:
+            self._access_token = None
+            self._refresh_token = None
 
     def refresh(self, http: httpx.Client, base_url: str) -> None:
         """Call ``POST /auth/refresh`` and store the new token pair.
 
+        Uses double-checked locking: if another thread already refreshed
+        while we waited for the lock, skip the network call.
+
         Raises ``AuthenticationError`` if the refresh fails.
         """
-        if self._refresh_token is None:
-            msg = "No refresh token available"
-            raise AuthenticationError(msg, status_code=401)
+        with self._lock:
+            # Double-check: another thread may have refreshed while we waited.
+            if not self.access_token_expired:
+                return
 
-        resp = http.post(
-            f"{base_url}/auth/refresh",
-            json={"refresh_token": self._refresh_token},
-        )
-        if resp.status_code != 200:  # noqa: PLR2004
-            self.clear()
-            msg = "Token refresh failed"
-            raise AuthenticationError(msg, status_code=resp.status_code)
+            if self._refresh_token is None:
+                msg = "No refresh token available"
+                raise AuthenticationError(msg, status_code=401)
 
-        data = resp.json()
-        self.store_tokens(data["access_token"], data["refresh_token"])
+            resp = http.post(
+                f"{base_url}/auth/refresh",
+                json={"refresh_token": self._refresh_token},
+            )
+            if resp.status_code != 200:  # noqa: PLR2004
+                self._access_token = None
+                self._refresh_token = None
+                msg = "Token refresh failed"
+                raise AuthenticationError(msg, status_code=resp.status_code)
+
+            data = resp.json()
+            self._access_token = data["access_token"]
+            self._refresh_token = data["refresh_token"]
 
     # -- internal helpers ----------------------------------------------------
 
