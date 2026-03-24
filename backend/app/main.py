@@ -1,7 +1,7 @@
 # Configure logging before any other app imports.
 # session.py and other modules emit logger.debug() at import time;
 # setup_logging() must run first so those messages respect OPENCASE_LOG_LEVEL.
-from app.core.config import settings
+from app.core.config import redact_settings, settings
 from app.core.logging import setup_logging
 
 setup_logging(settings.log_level, settings.log_output)
@@ -25,6 +25,7 @@ from app.core.telemetry import configure_instrumentation, setup_telemetry  # noq
 logger = logging.getLogger(__name__)
 
 setup_telemetry(settings)
+logger.info("Settings loaded: %s", redact_settings(settings.model_dump()))
 
 
 @asynccontextmanager

@@ -1,7 +1,7 @@
 from importlib.metadata import version
 from typing import Any, Literal
 
-from pydantic import Field
+from pydantic import Field, computed_field
 from pydantic_settings import (
     BaseSettings,
     JsonConfigSettingsSource,
@@ -88,6 +88,92 @@ class AdminSettings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="OPENCASE_ADMIN_")
 
 
+class RedisSettings(BaseSettings):
+    """Redis sub-config (OPENCASE_REDIS_ prefix).
+
+    Individual fields are preferred over a monolithic URL so that each
+    component is independently overridable and visible in documentation.
+    The computed ``url`` property assembles them into a connection string.
+    """
+
+    host: str = "redis"
+    port: int = 6379
+    db: int = 0
+    password: str | None = None
+    ssl: bool = False
+    pool_size: int = 10
+
+    @computed_field  # type: ignore[prop-decorator]
+    @property
+    def url(self) -> str:
+        scheme = "rediss" if self.ssl else "redis"
+        auth = f":{self.password}@" if self.password else ""
+        return f"{scheme}://{auth}{self.host}:{self.port}/{self.db}"
+
+    model_config = SettingsConfigDict(env_prefix="OPENCASE_REDIS_")
+
+
+class CelerySettings(BaseSettings):
+    """Celery sub-config (OPENCASE_CELERY_ prefix).
+
+    broker_url defaults to the Docker-internal Redis address.
+    result_backend is None until the tasks database is provisioned
+    (Feature 2.4).
+    """
+
+    broker_url: str = "redis://redis:6379/0"
+    result_backend: str | None = None
+    task_serializer: str = "json"
+    accept_content: list[str] = Field(default=["json"])
+    timezone: str = "UTC"
+    worker_concurrency: int = 2
+    task_soft_time_limit: int = 300
+    task_hard_time_limit: int = 600
+    task_acks_late: bool = True
+    worker_prefetch_multiplier: int = 1
+
+    model_config = SettingsConfigDict(env_prefix="OPENCASE_CELERY_")
+
+
+class FlowerSettings(BaseSettings):
+    """Flower monitoring UI sub-config (OPENCASE_FLOWER_ prefix)."""
+
+    port: int = 5555
+    basic_auth: str | None = None
+    url_prefix: str = "/flower"
+
+    model_config = SettingsConfigDict(env_prefix="OPENCASE_FLOWER_")
+
+
+# ---------------------------------------------------------------------------
+# Secret redaction
+# ---------------------------------------------------------------------------
+
+_SECRET_SUBSTRINGS = ("password", "secret")
+_SECRET_EXACT = frozenset({"basic_auth", "broker_url", "result_backend"})
+
+
+def redact_settings(data: dict[str, Any]) -> dict[str, Any]:
+    """Return a copy of a nested settings dict with sensitive values masked."""
+    out: dict[str, Any] = {}
+    for key, value in data.items():
+        if isinstance(value, dict):
+            out[key] = redact_settings(value)
+        elif isinstance(value, list):
+            out[key] = [
+                redact_settings(item) if isinstance(item, dict) else item
+                for item in value
+            ]
+        elif value is not None and (
+            any(s in key.lower() for s in _SECRET_SUBSTRINGS)
+            or key.lower() in _SECRET_EXACT
+        ):
+            out[key] = "***REDACTED***"
+        else:
+            out[key] = value
+    return out
+
+
 class Settings(BaseSettings):
     """Application settings with layered loading.
 
@@ -109,6 +195,9 @@ class Settings(BaseSettings):
     auth: AuthSettings = AuthSettings()  # type: ignore[call-arg]
     db: DbSettings = DbSettings()  # type: ignore[call-arg]
     admin: AdminSettings = AdminSettings()
+    redis: RedisSettings = RedisSettings()
+    celery: CelerySettings = CelerySettings()
+    flower: FlowerSettings = FlowerSettings()
 
     model_config = SettingsConfigDict(
         env_prefix="OPENCASE_",

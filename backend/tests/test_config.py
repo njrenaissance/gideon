@@ -13,7 +13,16 @@ import pytest
 from dotenv import dotenv_values
 from pydantic import ValidationError
 
-from app.core.config import ApiSettings, AuthSettings, DbSettings, Settings
+from app.core.config import (
+    ApiSettings,
+    AuthSettings,
+    CelerySettings,
+    DbSettings,
+    FlowerSettings,
+    RedisSettings,
+    Settings,
+    redact_settings,
+)
 
 # Read required test values from .env.test — single source of truth.
 _ENV_TEST = dotenv_values(Path(__file__).parent.parent / ".env.test")
@@ -61,6 +70,34 @@ DEFAULTS = {
         "first_name": _ENV_TEST.get("OPENCASE_ADMIN_FIRST_NAME", "Admin"),
         "last_name": _ENV_TEST.get("OPENCASE_ADMIN_LAST_NAME", "User"),
         "firm_name": _ENV_TEST.get("OPENCASE_ADMIN_FIRM_NAME", "Default Firm"),
+    },
+    "redis": {
+        "host": _ENV_TEST.get("OPENCASE_REDIS_HOST", "redis"),
+        "port": int(_ENV_TEST.get("OPENCASE_REDIS_PORT", "6379")),
+        "db": int(_ENV_TEST.get("OPENCASE_REDIS_DB", "0")),
+        "password": None,
+        "ssl": False,
+        "pool_size": int(_ENV_TEST.get("OPENCASE_REDIS_POOL_SIZE", "10")),
+        "url": f"redis://{_ENV_TEST.get('OPENCASE_REDIS_HOST', 'redis')}:6379/0",
+    },
+    "celery": {
+        "broker_url": _ENV_TEST.get(
+            "OPENCASE_CELERY_BROKER_URL", "redis://redis:6379/0"
+        ),
+        "result_backend": None,
+        "task_serializer": "json",
+        "accept_content": ["json"],
+        "timezone": "UTC",
+        "worker_concurrency": 2,
+        "task_soft_time_limit": 300,
+        "task_hard_time_limit": 600,
+        "task_acks_late": True,
+        "worker_prefetch_multiplier": 1,
+    },
+    "flower": {
+        "port": 5555,
+        "basic_auth": None,
+        "url_prefix": "/flower",
     },
 }
 
@@ -220,3 +257,166 @@ def test_db_prefix_isolation(monkeypatch):
     monkeypatch.delenv("OPENCASE_DB_URL", raising=False)
     with pytest.raises(ValidationError):
         DbSettings()
+
+
+# ---------------------------------------------------------------------------
+# RedisSettings — tested directly
+# ---------------------------------------------------------------------------
+
+
+def test_redis_defaults():
+    cfg = RedisSettings()
+    assert cfg.host == "localhost"  # from .env.test
+    assert cfg.port == 6379
+    assert cfg.db == 0
+    assert cfg.password is None
+    assert cfg.ssl is False
+    assert cfg.pool_size == 10
+
+
+def test_redis_url_no_password():
+    cfg = RedisSettings()
+    assert cfg.url == "redis://localhost:6379/0"
+
+
+def test_redis_url_with_password(monkeypatch):
+    monkeypatch.setenv("OPENCASE_REDIS_PASSWORD", "s3cret")
+    cfg = RedisSettings()
+    assert cfg.url == "redis://:s3cret@localhost:6379/0"
+
+
+def test_redis_url_ssl(monkeypatch):
+    monkeypatch.setenv("OPENCASE_REDIS_SSL", "true")
+    cfg = RedisSettings()
+    assert cfg.url.startswith("rediss://")
+
+
+def test_redis_env_override(monkeypatch):
+    monkeypatch.setenv("OPENCASE_REDIS_PORT", "6380")
+    cfg = RedisSettings()
+    assert cfg.port == 6380
+
+
+def test_redis_prefix_isolation(monkeypatch):
+    # OPENCASE_HOST (wrong prefix) must not override OPENCASE_REDIS_HOST
+    monkeypatch.setenv("OPENCASE_HOST", "wrong")
+    cfg = RedisSettings()
+    assert cfg.host != "wrong"
+
+
+# ---------------------------------------------------------------------------
+# CelerySettings — tested directly
+# ---------------------------------------------------------------------------
+
+
+def test_celery_defaults():
+    cfg = CelerySettings()
+    assert cfg.broker_url == "redis://localhost:6379/0"  # from .env.test
+    assert cfg.result_backend is None
+    assert cfg.task_serializer == "json"
+    assert cfg.accept_content == ["json"]
+    assert cfg.timezone == "UTC"
+    assert cfg.worker_concurrency == 2
+    assert cfg.task_soft_time_limit == 300
+    assert cfg.task_hard_time_limit == 600
+    assert cfg.task_acks_late is True
+    assert cfg.worker_prefetch_multiplier == 1
+
+
+def test_celery_env_override(monkeypatch):
+    monkeypatch.setenv("OPENCASE_CELERY_WORKER_CONCURRENCY", "4")
+    cfg = CelerySettings()
+    assert cfg.worker_concurrency == 4
+
+
+def test_celery_result_backend_override(monkeypatch):
+    dsn = "db+postgresql+psycopg2://user:pass@tasks-db:5432/celery"
+    monkeypatch.setenv("OPENCASE_CELERY_RESULT_BACKEND", dsn)
+    cfg = CelerySettings()
+    assert cfg.result_backend == dsn
+
+
+def test_celery_prefix_isolation(monkeypatch):
+    # OPENCASE_BROKER_URL (wrong prefix) must not override OPENCASE_CELERY_BROKER_URL
+    monkeypatch.setenv("OPENCASE_BROKER_URL", "wrong")
+    cfg = CelerySettings()
+    assert cfg.broker_url != "wrong"
+
+
+# ---------------------------------------------------------------------------
+# FlowerSettings — tested directly
+# ---------------------------------------------------------------------------
+
+
+def test_flower_defaults():
+    cfg = FlowerSettings()
+    assert cfg.port == 5555
+    assert cfg.basic_auth is None
+    assert cfg.url_prefix == "/flower"
+
+
+def test_flower_env_override(monkeypatch):
+    monkeypatch.setenv("OPENCASE_FLOWER_PORT", "5556")
+    cfg = FlowerSettings()
+    assert cfg.port == 5556
+
+
+def test_flower_basic_auth(monkeypatch):
+    monkeypatch.setenv("OPENCASE_FLOWER_BASIC_AUTH", "admin:secret")
+    cfg = FlowerSettings()
+    assert cfg.basic_auth == "admin:secret"
+
+
+def test_flower_prefix_isolation(monkeypatch):
+    # OPENCASE_PORT (wrong prefix) must not override OPENCASE_FLOWER_PORT
+    monkeypatch.setenv("OPENCASE_PORT", "9999")
+    cfg = FlowerSettings()
+    assert cfg.port == 5555
+
+
+# ---------------------------------------------------------------------------
+# redact_settings
+# ---------------------------------------------------------------------------
+
+
+_REDACTED = "***REDACTED***"
+
+
+def test_redact_settings_masks_secrets():
+    data = {
+        "auth": {"secret_key": "real-secret", "algorithm": "HS256"},
+        "admin": {"password": "real-pw", "email": "a@b.com"},
+        "flower": {"basic_auth": "user:pass", "port": 5555},
+        "redis": {"password": "redis-pw", "host": "redis"},
+        "celery": {
+            "broker_url": "redis://:s3cret@redis:6379/0",
+            "result_backend": "db+postgresql+psycopg2://u:p@host/db",
+            "timezone": "UTC",
+        },
+    }
+    redacted = redact_settings(data)
+    assert redacted["auth"]["secret_key"] == _REDACTED
+    assert redacted["auth"]["algorithm"] == "HS256"
+    assert redacted["admin"]["password"] == _REDACTED
+    assert redacted["admin"]["email"] == "a@b.com"
+    assert redacted["flower"]["basic_auth"] == _REDACTED
+    assert redacted["flower"]["port"] == 5555
+    assert redacted["redis"]["password"] == _REDACTED
+    assert redacted["redis"]["host"] == "redis"
+    assert redacted["celery"]["broker_url"] == _REDACTED
+    assert redacted["celery"]["result_backend"] == _REDACTED
+    assert redacted["celery"]["timezone"] == "UTC"
+
+
+def test_redact_settings_skips_none():
+    data = {"redis": {"password": None, "host": "redis"}}
+    redacted = redact_settings(data)
+    assert redacted["redis"]["password"] is None
+
+
+def test_redact_settings_recurses_into_lists():
+    data = {"items": [{"password": "pw", "name": "a"}, {"host": "b"}]}
+    redacted = redact_settings(data)
+    assert redacted["items"][0]["password"] == _REDACTED
+    assert redacted["items"][0]["name"] == "a"
+    assert redacted["items"][1]["host"] == "b"

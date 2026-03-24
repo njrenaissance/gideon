@@ -97,3 +97,58 @@ on-premise.
 When `EXPORTER=otlp`, the Grafana UI is available at `http://localhost:3001`
 with pre-configured datasources for Tempo (traces), Prometheus (metrics), and
 Loki (logs).
+
+---
+
+## RedisSettings (`OPENCASE_REDIS_` prefix)
+
+Redis connection settings. Individual fields are preferred over a monolithic URL
+so each component is independently overridable. A computed `url` property
+assembles them into a connection string at runtime.
+
+| Variable | Default | Description |
+| --- | --- | --- |
+| `OPENCASE_REDIS_HOST` | `redis` | Redis host (Docker service name) |
+| `OPENCASE_REDIS_PORT` | `6379` | Redis port |
+| `OPENCASE_REDIS_DB` | `0` | Redis database number (0–15) |
+| `OPENCASE_REDIS_PASSWORD` | *none* | Redis password (optional) |
+| `OPENCASE_REDIS_SSL` | `false` | Enable TLS/SSL (`rediss://` scheme) |
+| `OPENCASE_REDIS_POOL_SIZE` | `10` | Connection pool max connections |
+
+The computed `url` property (e.g. `redis://redis:6379/0`) is available in
+Python as `settings.redis.url` but is not set via an environment variable.
+
+---
+
+## CelerySettings (`OPENCASE_CELERY_` prefix)
+
+Celery task queue configuration.
+
+| Variable | Default | Description |
+| --- | --- | --- |
+| `OPENCASE_CELERY_BROKER_URL` | `redis://redis:6379/0` | Message broker URL |
+| `OPENCASE_CELERY_RESULT_BACKEND` | *none* | Task result backend DSN (set when tasks DB is provisioned) |
+| `OPENCASE_CELERY_TASK_SERIALIZER` | `json` | Task serialization format |
+| `OPENCASE_CELERY_ACCEPT_CONTENT` | `["json"]` | Accepted content types (JSON array) |
+| `OPENCASE_CELERY_TIMEZONE` | `UTC` | Timezone for scheduled tasks |
+| `OPENCASE_CELERY_WORKER_CONCURRENCY` | `2` | Concurrent worker processes |
+| `OPENCASE_CELERY_TASK_SOFT_TIME_LIMIT` | `300` | Soft time limit per task (seconds) |
+| `OPENCASE_CELERY_TASK_HARD_TIME_LIMIT` | `600` | Hard time limit per task (seconds) |
+| `OPENCASE_CELERY_TASK_ACKS_LATE` | `true` | Acknowledge after completion (crash-safe) |
+| `OPENCASE_CELERY_WORKER_PREFETCH_MULTIPLIER` | `1` | Tasks prefetched per worker (1 = fair) |
+
+`OPENCASE_CELERY_RESULT_BACKEND` is optional until the tasks database is
+provisioned (Feature 2.4). When set, use a synchronous psycopg2 DSN:
+`db+postgresql+psycopg2://user:pass@tasks-db:5432/celery`.
+
+---
+
+## FlowerSettings (`OPENCASE_FLOWER_` prefix)
+
+Flower monitoring UI for Celery.
+
+| Variable | Default | Description |
+| --- | --- | --- |
+| `OPENCASE_FLOWER_PORT` | `5555` | Flower web UI port |
+| `OPENCASE_FLOWER_BASIC_AUTH` | *none* | Basic auth credentials (`user:password`, optional) |
+| `OPENCASE_FLOWER_URL_PREFIX` | `/flower` | URL prefix for reverse proxy |
