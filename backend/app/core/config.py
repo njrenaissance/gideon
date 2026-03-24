@@ -1,5 +1,6 @@
 from importlib.metadata import version
 from typing import Any, Literal
+from urllib.parse import quote, urlparse
 
 from pydantic import Field, computed_field
 from pydantic_settings import (
@@ -107,7 +108,7 @@ class RedisSettings(BaseSettings):
     @property
     def url(self) -> str:
         scheme = "rediss" if self.ssl else "redis"
-        auth = f":{self.password}@" if self.password else ""
+        auth = f":{quote(self.password, safe='')}@" if self.password else ""
         return f"{scheme}://{auth}{self.host}:{self.port}/{self.db}"
 
     model_config = SettingsConfigDict(env_prefix="OPENCASE_REDIS_")
@@ -116,7 +117,11 @@ class RedisSettings(BaseSettings):
 class CelerySettings(BaseSettings):
     """Celery sub-config (OPENCASE_CELERY_ prefix).
 
-    broker_url defaults to the Docker-internal Redis address.
+    broker_url defaults to the Docker-internal Redis address and must be
+    kept in sync with RedisSettings (host, port, db, password, ssl).
+    When overriding RedisSettings fields, update broker_url to match or
+    set OPENCASE_CELERY_BROKER_URL explicitly.
+
     result_backend is None until the tasks database is provisioned
     (Feature 2.4).
     """
@@ -124,7 +129,7 @@ class CelerySettings(BaseSettings):
     broker_url: str = "redis://redis:6379/0"
     result_backend: str | None = None
     task_serializer: str = "json"
-    accept_content: list[str] = Field(default=["json"])
+    accept_content: list[str] = Field(default_factory=lambda: ["json"])
     timezone: str = "UTC"
     worker_concurrency: int = 2
     task_soft_time_limit: int = 300
@@ -150,7 +155,20 @@ class FlowerSettings(BaseSettings):
 # ---------------------------------------------------------------------------
 
 _SECRET_SUBSTRINGS = ("password", "secret")
-_SECRET_EXACT = frozenset({"basic_auth", "broker_url", "result_backend"})
+_SECRET_EXACT = frozenset({"basic_auth"})
+_URL_FIELDS = frozenset({"broker_url", "result_backend", "url"})
+
+
+def _redact_url(value: str) -> str:
+    """Redact only the password component of a URL, preserving host/port/path."""
+    try:
+        parsed = urlparse(value)
+    except Exception:
+        return "***REDACTED***"
+    if parsed.password:
+        replaced = parsed.netloc.replace(f":{parsed.password}@", ":***@")
+        return parsed._replace(netloc=replaced).geturl()
+    return value
 
 
 def redact_settings(data: dict[str, Any]) -> dict[str, Any]:
@@ -169,6 +187,8 @@ def redact_settings(data: dict[str, Any]) -> dict[str, Any]:
             or key.lower() in _SECRET_EXACT
         ):
             out[key] = "***REDACTED***"
+        elif isinstance(value, str) and key.lower() in _URL_FIELDS:
+            out[key] = _redact_url(value)
         else:
             out[key] = value
     return out

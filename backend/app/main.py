@@ -25,7 +25,7 @@ from app.core.telemetry import configure_instrumentation, setup_telemetry  # noq
 logger = logging.getLogger(__name__)
 
 setup_telemetry(settings)
-logger.info("Settings loaded: %s", redact_settings(settings.model_dump()))
+logger.debug("Settings loaded: %s", redact_settings(settings.model_dump()))
 
 
 @asynccontextmanager
