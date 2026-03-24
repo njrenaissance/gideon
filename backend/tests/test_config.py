@@ -285,6 +285,12 @@ def test_redis_url_with_password(monkeypatch):
     assert cfg.url == "redis://:s3cret@localhost:6379/0"
 
 
+def test_redis_url_encodes_special_chars(monkeypatch):
+    monkeypatch.setenv("OPENCASE_REDIS_PASSWORD", "p@ss/word")
+    cfg = RedisSettings()
+    assert cfg.url == "redis://:p%40ss%2Fword@localhost:6379/0"
+
+
 def test_redis_url_ssl(monkeypatch):
     monkeypatch.setenv("OPENCASE_REDIS_SSL", "true")
     cfg = RedisSettings()
@@ -403,9 +409,19 @@ def test_redact_settings_masks_secrets():
     assert redacted["flower"]["port"] == 5555
     assert redacted["redis"]["password"] == _REDACTED
     assert redacted["redis"]["host"] == "redis"
-    assert redacted["celery"]["broker_url"] == _REDACTED
-    assert redacted["celery"]["result_backend"] == _REDACTED
+    # URL fields redact only the password component, not the whole URL
+    assert redacted["celery"]["broker_url"] == "redis://:***@redis:6379/0"
+    assert (
+        redacted["celery"]["result_backend"] == "db+postgresql+psycopg2://u:***@host/db"
+    )
     assert redacted["celery"]["timezone"] == "UTC"
+
+
+def test_redact_settings_url_without_password():
+    data = {"celery": {"broker_url": "redis://redis:6379/0"}}
+    redacted = redact_settings(data)
+    # No password in URL — passed through unchanged
+    assert redacted["celery"]["broker_url"] == "redis://redis:6379/0"
 
 
 def test_redact_settings_skips_none():
