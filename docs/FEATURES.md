@@ -31,7 +31,7 @@
 
 | ID | Feature | Specs | Code | Docs |
 | --- | --- | --- | --- | --- |
-| 2.1 | Configuration + env vars (CelerySettings, RedisSettings, FlowerSettings) | Pending | Pending | Pending |
+| 2.1 | Configuration + env vars (CelerySettings, RedisSettings, FlowerSettings) | Pending | Done | Done |
 | 2.2 | Redis broker container | Pending | Pending | Pending |
 | 2.3 | Celery app + task definitions (app/workers/) | Pending | Pending | Pending |
 | 2.4 | Task result persistence (separate Postgres instance, task lifecycle table for audit) | Pending | Pending | Pending |
