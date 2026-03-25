@@ -15,7 +15,7 @@ from typing import Any
 
 from fastapi import Depends, HTTPException, status
 from opentelemetry import trace
-from shared.models.enums import Role
+from shared.models.enums import Classification, Role
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -133,13 +133,13 @@ async def build_qdrant_filter(
 
         # Jencks gating — excluded for all non-Admin until Feature 11.1
         # adds witness testimony tracking.
-        excluded.add("jencks")
+        excluded.add(Classification.jencks)
 
         # Work product gating.
         if user.role == Role.investigator or (
             user.role == Role.paralegal and not access_row.view_work_product
         ):
-            excluded.add("work_product")
+            excluded.add(Classification.work_product)
         # Attorney and Paralegal-with-grant: work_product allowed.
 
         return PermissionFilter(

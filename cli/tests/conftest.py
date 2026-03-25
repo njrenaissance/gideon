@@ -17,10 +17,12 @@ from shared.models.auth import (
     TokenResponse,
 )
 from shared.models.base import MessageResponse
+from shared.models.enums import TaskState
 from shared.models.firm import FirmResponse
 from shared.models.health import HealthResponse, ReadinessResponse, ServiceChecks
 from shared.models.matter import MatterResponse, MatterSummary
 from shared.models.matter_access import MatterAccessResponse
+from shared.models.task import TaskResponse, TaskSubmitResponse, TaskSummary
 from shared.models.user import UserResponse, UserSummary
 from typer.testing import CliRunner
 
@@ -175,3 +177,31 @@ MATTER_ACCESS = MatterAccessResponse(
 )
 
 REVOKE_RESPONSE = MessageResponse(detail="Access revoked")
+
+TASK_SUMMARY = TaskSummary(
+    id="00000000-0000-0000-0000-000000000030",
+    task_name="ping",
+    status=TaskState.pending,
+    submitted_at="2025-01-01T00:00:00",
+    submitted_by="00000000-0000-0000-0000-000000000001",
+)
+
+TASK_RESPONSE = TaskResponse(
+    id="00000000-0000-0000-0000-000000000030",
+    task_name="ping",
+    status=TaskState.success,
+    submitted_at="2025-01-01T00:00:00",
+    submitted_by="00000000-0000-0000-0000-000000000001",
+    firm_id="00000000-0000-0000-0000-000000000002",
+    args=[],
+    kwargs={},
+    result="pong",
+    date_done="2025-01-01T00:00:01",
+    traceback=None,
+)
+
+TASK_SUBMIT_RESPONSE = TaskSubmitResponse(
+    task_id="00000000-0000-0000-0000-000000000030",
+)
+
+TASK_CANCEL_RESPONSE = MessageResponse(detail="Task revoked")

@@ -5,11 +5,12 @@ from __future__ import annotations
 import uuid
 from datetime import UTC, datetime
 
-from shared.models.enums import MatterStatus, Role
+from shared.models.enums import MatterStatus, Role, TaskState
 
 from app.db.models.firm import Firm
 from app.db.models.matter import Matter
 from app.db.models.matter_access import MatterAccess
+from app.db.models.task_submission import TaskSubmission
 from app.db.models.user import User
 
 
@@ -57,6 +58,21 @@ def make_matter(**kwargs: object) -> Matter:
     }
     defaults.update(kwargs)
     return Matter(**defaults)
+
+
+def make_task_submission(**kwargs: object) -> TaskSubmission:
+    defaults: dict[str, object] = {
+        "id": str(uuid.uuid4()),
+        "firm_id": uuid.uuid4(),
+        "user_id": uuid.uuid4(),
+        "task_name": "ping",
+        "args_json": "[]",
+        "kwargs_json": "{}",
+        "status": TaskState.pending,
+        "submitted_at": datetime.now(UTC),
+    }
+    defaults.update(kwargs)
+    return TaskSubmission(**defaults)
 
 
 def make_matter_access(**kwargs: object) -> MatterAccess:

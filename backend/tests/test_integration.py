@@ -6,9 +6,12 @@ These tests require Docker to be running.
 Run with: pytest -m integration tests/test_integration.py
 """
 
+import asyncio
+
 import httpx
 import pytest
 import redis as redis_lib
+from shared.models.enums import TaskState
 
 
 @pytest.mark.integration
@@ -69,3 +72,48 @@ def test_celery_worker_ping_task(
     )
     result = app.send_task("opencase.ping")
     assert result.get(timeout=15) == "pong"
+
+
+# ---------------------------------------------------------------------------
+# Task API — submit → poll → complete
+# ---------------------------------------------------------------------------
+
+
+async def _login(client: httpx.AsyncClient, email: str, password: str) -> str:
+    """Log in and return an access token."""
+    resp = await client.post("/auth/login", json={"email": email, "password": password})
+    assert resp.status_code == 200
+    return resp.json()["access_token"]
+
+
+@pytest.mark.integration
+async def test_task_submit_poll_complete(
+    fastapi_service: str, seed_admin: dict
+) -> None:
+    """Submit a ping task via the API and poll until it completes."""
+    async with httpx.AsyncClient(base_url=fastapi_service) as client:
+        token = await _login(client, seed_admin["email"], seed_admin["password"])
+        headers = {"Authorization": f"Bearer {token}"}
+
+        # Submit
+        resp = await client.post("/tasks/", json={"task_name": "ping"}, headers=headers)
+        assert resp.status_code == 201
+        task_id = resp.json()["task_id"]
+
+        # Poll until SUCCESS (max 15 seconds)
+        for _ in range(30):
+            resp = await client.get(f"/tasks/{task_id}", headers=headers)
+            assert resp.status_code == 200
+            data = resp.json()
+            if data["status"] == TaskState.success:
+                assert data["result"] == "pong"
+                break
+            await asyncio.sleep(0.5)
+        else:
+            pytest.fail(f"Task {task_id} did not complete within 15 seconds")
+
+        # List should include our task
+        resp = await client.get("/tasks/", headers=headers)
+        assert resp.status_code == 200
+        task_ids = [t["id"] for t in resp.json()]
+        assert task_id in task_ids

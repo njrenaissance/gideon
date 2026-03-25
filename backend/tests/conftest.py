@@ -32,6 +32,7 @@ from app.db.models.firm import Firm  # noqa: E402
 from app.db.models.matter import Matter  # noqa: E402
 from app.db.models.matter_access import MatterAccess  # noqa: E402
 from app.db.models.refresh_token import RefreshToken  # noqa: E402
+from app.db.models.task_submission import TaskSubmission  # noqa: E402
 from app.db.models.user import User  # noqa: E402
 from app.main import app  # noqa: E402
 
@@ -317,6 +318,7 @@ def seed_admin(postgres_service):
 
     # Teardown — remove all traces.
     with Session(engine) as session:
+        session.execute(delete(TaskSubmission).where(TaskSubmission.user_id == user_id))
         session.execute(delete(RefreshToken).where(RefreshToken.user_id == user_id))
         session.execute(delete(User).where(User.id == user_id))
         session.execute(delete(Firm).where(Firm.id == firm_id))

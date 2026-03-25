@@ -94,3 +94,17 @@ prompts_created = meter.create_counter(
     "opencase.prompts.created",
     description="Prompts submitted",
 )
+
+# ---------------------------------------------------------------------------
+# Tasks (Feature 2.5–2.6)
+# ---------------------------------------------------------------------------
+
+tasks_submitted = meter.create_counter(
+    "opencase.tasks.submitted",
+    description="Tasks submitted via API",
+)
+
+tasks_cancelled = meter.create_counter(
+    "opencase.tasks.cancelled",
+    description="Tasks cancelled via API",
+)

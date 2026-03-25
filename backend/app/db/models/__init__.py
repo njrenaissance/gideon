@@ -6,6 +6,7 @@ from app.db.models.matter import Matter
 from app.db.models.matter_access import MatterAccess
 from app.db.models.prompt import Prompt
 from app.db.models.refresh_token import RefreshToken
+from app.db.models.task_submission import TaskSubmission
 from app.db.models.user import User
 
 __all__ = [
@@ -15,5 +16,6 @@ __all__ = [
     "MatterAccess",
     "Prompt",
     "RefreshToken",
+    "TaskSubmission",
     "User",
 ]

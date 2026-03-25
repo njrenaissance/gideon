@@ -16,6 +16,7 @@ from shared.models.document import (
     DocumentResponse,
     DocumentSummary,
 )
+from shared.models.enums import Classification, DocumentSource, TaskState
 from shared.models.firm import FirmResponse
 from shared.models.health import HealthResponse, ReadinessResponse
 from shared.models.matter import (
@@ -28,6 +29,11 @@ from shared.models.matter_access import (
 from shared.models.prompt import (
     PromptResponse,
     PromptSummary,
+)
+from shared.models.task import (
+    TaskResponse,
+    TaskSubmitResponse,
+    TaskSummary,
 )
 from shared.models.user import (
     UserResponse,
@@ -270,8 +276,8 @@ class OpenCaseClient:
         content_type: str,
         size_bytes: int,
         file_hash: str,
-        source: str = "defense",
-        classification: str = "unclassified",
+        source: str = DocumentSource.defense,
+        classification: str = Classification.unclassified,
         bates_number: str | None = None,
     ) -> DocumentResponse:
         payload: dict[str, Any] = {
@@ -303,6 +309,45 @@ class OpenCaseClient:
             "POST", "/prompts/", json={"matter_id": matter_id, "query": query}
         )
         return PromptResponse.model_validate(resp.json())
+
+    # -- tasks ---------------------------------------------------------------
+
+    def list_tasks(
+        self,
+        *,
+        status: TaskState | None = None,
+        task_name: str | None = None,
+    ) -> list[TaskSummary]:
+        params: dict[str, str] = {}
+        if status is not None:
+            params["status"] = status
+        if task_name is not None:
+            params["task_name"] = task_name
+        resp = self._request("GET", "/tasks/", params=params)
+        return [TaskSummary.model_validate(item) for item in resp.json()]
+
+    def get_task(self, task_id: str) -> TaskResponse:
+        resp = self._request("GET", f"/tasks/{task_id}")
+        return TaskResponse.model_validate(resp.json())
+
+    def submit_task(
+        self,
+        *,
+        task_name: str,
+        args: list[Any] | None = None,
+        kwargs: dict[str, Any] | None = None,
+    ) -> TaskSubmitResponse:
+        payload: dict[str, Any] = {"task_name": task_name}
+        if args is not None:
+            payload["args"] = args
+        if kwargs is not None:
+            payload["kwargs"] = kwargs
+        resp = self._request("POST", "/tasks/", json=payload)
+        return TaskSubmitResponse.model_validate(resp.json())
+
+    def cancel_task(self, task_id: str) -> MessageResponse:
+        resp = self._request("DELETE", f"/tasks/{task_id}")
+        return MessageResponse.model_validate(resp.json())
 
     # -- internal transport --------------------------------------------------
 

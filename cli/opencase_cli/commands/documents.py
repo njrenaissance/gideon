@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Annotated
 
 import typer
+from shared.models.enums import Classification, DocumentSource
 
 from opencase_cli.common import BaseUrlOption, JsonOption, TimeoutOption, get_client
 from opencase_cli.output import (
@@ -66,10 +67,10 @@ def upload_document(
     file_hash: Annotated[str, typer.Option("--file-hash", help="SHA-256 hex digest.")],
     source: Annotated[
         str, typer.Option("--source", help="Document source.")
-    ] = "defense",
+    ] = DocumentSource.defense,
     classification: Annotated[
         str, typer.Option("--classification", help="Document classification.")
-    ] = "unclassified",
+    ] = Classification.unclassified,
     bates_number: Annotated[
         str | None, typer.Option("--bates-number", help="Bates number.")
     ] = None,
