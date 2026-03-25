@@ -23,6 +23,15 @@ class DocumentSource(enum.StrEnum):
     work_product = "work_product"
 
 
+class TaskState(enum.StrEnum):
+    pending = "PENDING"
+    started = "STARTED"
+    success = "SUCCESS"
+    failure = "FAILURE"
+    revoked = "REVOKED"
+    retry = "RETRY"
+
+
 class Classification(enum.StrEnum):
     brady = "brady"
     giglio = "giglio"

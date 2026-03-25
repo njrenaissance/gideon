@@ -17,6 +17,7 @@ from opencase_cli.commands import (
     matters,
     mfa,
     prompts,
+    tasks,
     users,
 )
 from opencase_cli.config import CLIConfig, config_path, load_config, save_config
@@ -40,6 +41,7 @@ app.add_typer(users.app, name="user")
 app.add_typer(matters.app, name="matter")
 app.add_typer(documents.app, name="document")
 app.add_typer(prompts.app, name="prompt")
+app.add_typer(tasks.app, name="task")
 app.add_typer(firms.app, name="firm")
 
 

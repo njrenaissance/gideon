@@ -19,6 +19,7 @@ from app.api.health import router as health_router  # noqa: E402
 from app.api.matter_access import router as matter_access_router  # noqa: E402
 from app.api.matters import router as matters_router  # noqa: E402
 from app.api.prompts import router as prompts_router  # noqa: E402
+from app.api.tasks import router as tasks_router  # noqa: E402
 from app.api.users import router as users_router  # noqa: E402
 from app.core.telemetry import configure_instrumentation, setup_telemetry  # noqa: E402
 
@@ -74,5 +75,6 @@ app.include_router(matters_router)
 app.include_router(matter_access_router)
 app.include_router(documents_router)
 app.include_router(prompts_router)
+app.include_router(tasks_router)
 
 configure_instrumentation(app, settings)
