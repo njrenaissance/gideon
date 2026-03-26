@@ -93,10 +93,10 @@ def test_worker_span_in_tempo(
 
     redis_host, redis_port = redis_service
     pg_host, pg_port = postgres_service
+    pg_user = os.environ.get("POSTGRES_USER", "opencase")
+    pg_pass = os.environ.get("POSTGRES_PASSWORD", "opencase")
     backend = (
-        f"db+postgresql://{os.environ['POSTGRES_USER']}"
-        f":{os.environ['POSTGRES_PASSWORD']}"
-        f"@{pg_host}:{pg_port}/opencase_tasks_test"
+        f"db+postgresql://{pg_user}:{pg_pass}@{pg_host}:{pg_port}/opencase_tasks_test"
     )
     app = Celery(
         broker=f"redis://{redis_host}:{redis_port}/0",

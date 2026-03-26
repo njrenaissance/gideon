@@ -25,8 +25,14 @@ COPY backend/alembic/ alembic/
 COPY backend/alembic.ini alembic.ini
 COPY backend/scripts/ scripts/
 
-# Install the backend project itself (with monitoring extra for Flower)
-RUN uv sync --frozen --no-dev --no-editable --extra monitoring
+# Install the backend project itself.
+# INSTALL_EXTRAS is empty by default; set to "monitoring" for the Flower container.
+ARG INSTALL_EXTRAS=""
+RUN if [ -n "$INSTALL_EXTRAS" ]; then \
+      uv sync --frozen --no-dev --no-editable --extra "$INSTALL_EXTRAS"; \
+    else \
+      uv sync --frozen --no-dev --no-editable; \
+    fi
 
 
 # ---- Stage 2: Runtime ----
