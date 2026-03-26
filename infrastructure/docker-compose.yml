@@ -284,6 +284,8 @@ services:
     build:
       context: ..
       dockerfile: backend/docker/Dockerfile
+      args:
+        INSTALL_EXTRAS: monitoring
     command: celery -A app.workers flower --port=5555 --url_prefix=/flower
     ports:
       - "${OPENCASE_FLOWER_PORT:-5555}:5555"

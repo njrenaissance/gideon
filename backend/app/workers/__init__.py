@@ -33,17 +33,19 @@ celery_app.autodiscover_tasks(["app.workers"])
 # polluting global OTel state when tests merely import celery_app.
 
 
-@worker_init.connect  # type: ignore[untyped-decorator]
-def _on_worker_init(**_kwargs: object) -> None:
+def _init_otel() -> None:
+    """Set up OTel tracing and Celery instrumentation."""
     from app.core.telemetry import configure_celery_instrumentation, setup_telemetry
 
     setup_telemetry(settings)
     configure_celery_instrumentation(settings)
+
+
+@worker_init.connect  # type: ignore[untyped-decorator]
+def _on_worker_init(**_kwargs: object) -> None:
+    _init_otel()
 
 
 @beat_init.connect  # type: ignore[untyped-decorator]
 def _on_beat_init(**_kwargs: object) -> None:
-    from app.core.telemetry import configure_celery_instrumentation, setup_telemetry
-
-    setup_telemetry(settings)
-    configure_celery_instrumentation(settings)
+    _init_otel()
