@@ -50,13 +50,13 @@ class PermissionFilter:
 
 
 # ---------------------------------------------------------------------------
-# _fetch_matter_access — private helper shared by build_qdrant_filter and
-# require_matter_access. Separated from FastAPI DI so callers can invoke it
-# directly without going through Depends().
+# fetch_matter_access — shared helper used by build_qdrant_filter,
+# require_matter_access, and the document router. Separated from FastAPI DI
+# so callers can invoke it directly without going through Depends().
 # ---------------------------------------------------------------------------
 
 
-async def _fetch_matter_access(
+async def fetch_matter_access(
     matter_id: uuid.UUID,
     user: User,
     db: AsyncSession,
@@ -129,7 +129,7 @@ async def build_qdrant_filter(
             )
 
         # Non-admin: verify MatterAccess row exists with firm-scope join.
-        access_row = await _fetch_matter_access(matter_id, user, db)
+        access_row = await fetch_matter_access(matter_id, user, db)
 
         # Jencks gating — excluded for all non-Admin until Feature 11.1
         # adds witness testimony tracking.
@@ -198,7 +198,7 @@ async def require_matter_access(
 ) -> MatterAccess | None:
     """Verify the user has access to the given matter.
 
-    Thin FastAPI dependency wrapper around ``_fetch_matter_access``.
+    Thin FastAPI dependency wrapper around ``fetch_matter_access``.
 
     Returns:
         ``MatterAccess`` for non-admin users (always — a missing row
@@ -218,4 +218,4 @@ async def require_matter_access(
         if user.role == Role.admin:
             return None
 
-        return await _fetch_matter_access(matter_id, user, db)
+        return await fetch_matter_access(matter_id, user, db)
