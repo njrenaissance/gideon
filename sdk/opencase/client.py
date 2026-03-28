@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import mimetypes
+from pathlib import Path
 from typing import Any
 
 import httpx
@@ -15,6 +17,7 @@ from shared.models.base import MessageResponse
 from shared.models.document import (
     DocumentResponse,
     DocumentSummary,
+    DuplicateCheckResponse,
 )
 from shared.models.enums import Classification, DocumentSource, TaskState
 from shared.models.firm import FirmResponse
@@ -271,28 +274,42 @@ class OpenCaseClient:
     def upload_document(
         self,
         *,
+        file_path: str | Path,
         matter_id: str,
-        filename: str,
-        content_type: str,
-        size_bytes: int,
-        file_hash: str,
         source: str = DocumentSource.defense,
         classification: str = Classification.unclassified,
         bates_number: str | None = None,
     ) -> DocumentResponse:
-        payload: dict[str, Any] = {
+        """Upload a local file to a matter via multipart form data."""
+        path = Path(file_path)
+        content_type = mimetypes.guess_type(path.name)[0] or "application/octet-stream"
+
+        data: dict[str, str] = {
             "matter_id": matter_id,
-            "filename": filename,
-            "content_type": content_type,
-            "size_bytes": size_bytes,
-            "file_hash": file_hash,
             "source": source,
             "classification": classification,
         }
         if bates_number is not None:
-            payload["bates_number"] = bates_number
-        resp = self._request("POST", "/documents/", json=payload)
+            data["bates_number"] = bates_number
+
+        with open(path, "rb") as fh:
+            files = {"file": (path.name, fh, content_type)}
+            resp = self._request("POST", "/documents/", files=files, data=data)
         return DocumentResponse.model_validate(resp.json())
+
+    def check_duplicate(
+        self,
+        *,
+        matter_id: str,
+        file_hash: str,
+    ) -> DuplicateCheckResponse:
+        """Check if a file hash already exists in a matter."""
+        resp = self._request(
+            "GET",
+            "/documents/check-duplicate",
+            params={"matter_id": matter_id, "file_hash": file_hash},
+        )
+        return DuplicateCheckResponse.model_validate(resp.json())
 
     # -- prompts -------------------------------------------------------------
 

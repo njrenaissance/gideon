@@ -20,13 +20,18 @@ from fastapi import (
 )
 from fastapi.responses import Response
 from opentelemetry import trace
-from shared.models.document import DocumentResponse, DocumentSummary
+from shared.models.document import (
+    DocumentResponse,
+    DocumentSummary,
+    DuplicateCheckResponse,
+)
 from shared.models.enums import Classification, DocumentSource, Role
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.auth import get_current_user
+from app.core.config import settings
 from app.core.metrics import documents_created, documents_duplicates_rejected
 from app.core.permissions import fetch_matter_access
 from app.db import get_db
@@ -192,101 +197,149 @@ async def create_document(
                 detail=f"Content type '{content_type}' is not allowed",
             )
 
-        # 3. Read file + compute SHA-256
+        # 3. Read file + compute SHA-256 (spools to disk for large files)
         try:
-            data, file_hash, size_bytes = await read_and_hash(file)
+            data, file_hash, size_bytes = await read_and_hash(
+                file,
+                max_bytes=settings.s3.max_upload_bytes,
+                spool_threshold=settings.s3.spool_threshold_bytes,
+            )
         except FileTooLargeError as exc:
             raise HTTPException(
                 status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
                 detail=str(exc),
             ) from exc
 
-        # 4. Dedup check via DB unique constraint
-        doc_id = uuid.uuid4()
-        filename = _sanitize_filename(file.filename)
-        extension = _extension_from_filename(file.filename)
-
-        doc = Document(
-            id=doc_id,
-            firm_id=user.firm_id,
-            matter_id=matter_id,
-            filename=filename,
-            file_hash=file_hash,
-            content_type=content_type,
-            size_bytes=size_bytes,
-            source=source,
-            classification=classification,
-            bates_number=bates_number,
-            legal_hold=False,
-            uploaded_by=user.id,
-        )
-        db.add(doc)
-
         try:
-            await db.flush()
-        except IntegrityError as exc:
-            await db.rollback()
-            documents_duplicates_rejected.add(1)
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail="A document with the same content already exists in this matter",
-            ) from exc
+            # 4. Dedup check via DB unique constraint
+            doc_id = uuid.uuid4()
+            filename = _sanitize_filename(file.filename)
+            extension = _extension_from_filename(file.filename)
 
-        # 5. Upload to S3
-        try:
-            s3_key = await storage.upload_document(
+            doc = Document(
+                id=doc_id,
                 firm_id=user.firm_id,
                 matter_id=matter_id,
-                document_id=doc_id,
-                extension=extension,
-                data=data,
-                size=size_bytes,
-                content_type=content_type,
+                filename=filename,
                 file_hash=file_hash,
+                content_type=content_type,
+                size_bytes=size_bytes,
+                source=source,
+                classification=classification,
+                bates_number=bates_number,
+                legal_hold=False,
+                uploaded_by=user.id,
             )
-        except Exception as exc:
-            await db.rollback()
-            logger.exception("S3 upload failed for document %s", doc_id)
-            raise HTTPException(
-                status_code=status.HTTP_502_BAD_GATEWAY,
-                detail="Failed to store file in object storage",
-            ) from exc
+            db.add(doc)
 
-        # 6. Commit DB transaction (clean up S3 object on failure)
-        try:
-            await db.commit()
-        except Exception as commit_exc:
-            logger.exception(
-                "DB commit failed for document %s; removing S3 object",
-                doc_id,
-            )
             try:
-                await storage.delete_document(s3_key)
-            except Exception:
-                logger.exception(
-                    "S3 cleanup also failed for document %s, key %s",
-                    doc_id,
-                    s3_key,
+                await db.flush()
+            except IntegrityError as exc:
+                await db.rollback()
+                documents_duplicates_rejected.add(1)
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail=(
+                        "A document with the same content already exists in this matter"
+                    ),
+                ) from exc
+
+            # 5. Upload to S3
+            try:
+                s3_key = await storage.upload_document(
+                    firm_id=user.firm_id,
+                    matter_id=matter_id,
+                    document_id=doc_id,
+                    extension=extension,
+                    data=data,
+                    size=size_bytes,
+                    content_type=content_type,
+                    file_hash=file_hash,
                 )
-            raise commit_exc
-        await db.refresh(doc)
+            except Exception as exc:
+                await db.rollback()
+                logger.exception("S3 upload failed for document %s", doc_id)
+                raise HTTPException(
+                    status_code=status.HTTP_502_BAD_GATEWAY,
+                    detail="Failed to store file in object storage",
+                ) from exc
 
-        # 7. Fire-and-forget ingestion task
-        try:
-            from app.ingestion import get_ingestion_service
+            # 6. Commit DB transaction (clean up S3 object on failure)
+            try:
+                await db.commit()
+            except Exception as commit_exc:
+                logger.exception(
+                    "DB commit failed for document %s; removing S3 object",
+                    doc_id,
+                )
+                try:
+                    await storage.delete_document(s3_key)
+                except Exception:
+                    logger.exception(
+                        "S3 cleanup also failed for document %s, key %s",
+                        doc_id,
+                        s3_key,
+                    )
+                raise commit_exc
+            await db.refresh(doc)
 
-            ingestion = get_ingestion_service()
-            await ingestion.process_document(doc_id, s3_key)
-        except Exception:
-            # Ingestion failure must not block the upload response.
-            # The document is already persisted — ingestion can be
-            # retried later.
-            logger.exception("Ingestion dispatch failed for document %s", doc_id)
+            # 7. Fire-and-forget ingestion task
+            try:
+                from app.ingestion import get_ingestion_service
 
-        documents_created.add(1)
-        logger.info("Document uploaded: id=%s key=%s", doc_id, s3_key)
+                ingestion = get_ingestion_service()
+                await ingestion.process_document(doc_id, s3_key)
+            except Exception:
+                # Ingestion failure must not block the upload response.
+                # The document is already persisted — ingestion can be
+                # retried later.
+                logger.exception("Ingestion dispatch failed for document %s", doc_id)
 
-        return _doc_to_response(doc)
+            documents_created.add(1)
+            logger.info("Document uploaded: id=%s key=%s", doc_id, s3_key)
+
+            return _doc_to_response(doc)
+        finally:
+            data.close()
+
+
+# ---------------------------------------------------------------------------
+# GET /documents/check-duplicate
+# ---------------------------------------------------------------------------
+
+
+@router.get("/check-duplicate", response_model=DuplicateCheckResponse)
+async def check_duplicate(
+    matter_id: uuid.UUID = Query(...),  # noqa: B008
+    file_hash: str = Query(  # noqa: B008
+        ..., min_length=64, max_length=64, pattern=r"^[0-9a-f]{64}$"
+    ),
+    user: User = Depends(get_current_user),  # noqa: B008
+    db: AsyncSession = Depends(get_db),  # noqa: B008
+) -> DuplicateCheckResponse:
+    """Check whether a document with the given SHA-256 hash exists in a matter.
+
+    This lightweight endpoint lets clients pre-check before uploading,
+    avoiding the bandwidth cost of sending files that would be rejected
+    as duplicates.
+    """
+    with tracer.start_as_current_span(
+        "documents.check_duplicate",
+        attributes={"user.id": str(user.id), "matter.id": str(matter_id)},
+    ):
+        await _verify_matter_access(matter_id, user, db)
+        result = await db.execute(
+            select(Document.id).where(
+                Document.firm_id == user.firm_id,
+                Document.matter_id == matter_id,
+                Document.file_hash == file_hash,
+            )
+        )
+        existing = result.scalar_one_or_none()
+        return DuplicateCheckResponse(
+            exists=existing is not None,
+            document_id=existing,
+        )
 
 
 # ---------------------------------------------------------------------------

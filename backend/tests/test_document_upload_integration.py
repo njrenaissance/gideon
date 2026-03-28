@@ -164,6 +164,111 @@ class TestDocumentUploadRoundtrip:
 
 
 @pytest.mark.integration
+class TestCheckDuplicate:
+    def test_check_duplicate_exists(self, fastapi_service, seed_demo) -> None:
+        """check-duplicate returns exists=True for a known hash."""
+        base_url = fastapi_service
+        headers = _login_user(base_url, seed_demo, "user_a")
+        matter_id = str(seed_demo["matter_a"]["id"])
+        content = b"check-dup integration test content"
+        file_hash = hashlib.sha256(content).hexdigest()
+
+        # Upload first
+        resp = _upload_document(base_url, headers, matter_id, file_content=content)
+        assert resp.status_code == 201
+        doc_id = resp.json()["id"]
+
+        # Check duplicate
+        resp = httpx.get(
+            f"{base_url}/documents/check-duplicate",
+            params={"matter_id": matter_id, "file_hash": file_hash},
+            headers=headers,
+            timeout=10,
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["exists"] is True
+        assert data["document_id"] == doc_id
+
+    def test_check_duplicate_not_found(self, fastapi_service, seed_demo) -> None:
+        """check-duplicate returns exists=False for an unknown hash."""
+        base_url = fastapi_service
+        headers = _login_user(base_url, seed_demo, "user_a")
+        matter_id = str(seed_demo["matter_a"]["id"])
+        fake_hash = "0" * 64
+
+        resp = httpx.get(
+            f"{base_url}/documents/check-duplicate",
+            params={"matter_id": matter_id, "file_hash": fake_hash},
+            headers=headers,
+            timeout=10,
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["exists"] is False
+        assert data["document_id"] is None
+
+    def test_check_duplicate_wrong_matter(self, fastapi_service, seed_demo) -> None:
+        """Same hash in a different matter returns exists=False."""
+        base_url = fastapi_service
+        headers = _login_user(base_url, seed_demo, "user_a")
+        content = b"cross-matter dup check content"
+        file_hash = hashlib.sha256(content).hexdigest()
+
+        # Upload to matter A
+        resp = _upload_document(
+            base_url,
+            headers,
+            str(seed_demo["matter_a"]["id"]),
+            file_content=content,
+        )
+        assert resp.status_code == 201
+
+        # Check in matter B — should not find it
+        resp = httpx.get(
+            f"{base_url}/documents/check-duplicate",
+            params={
+                "matter_id": str(seed_demo["matter_b"]["id"]),
+                "file_hash": file_hash,
+            },
+            headers=headers,
+            timeout=10,
+        )
+        assert resp.status_code == 200
+        assert resp.json()["exists"] is False
+
+    def test_check_duplicate_invalid_hash_rejected(
+        self, fastapi_service, seed_demo
+    ) -> None:
+        """Non-hex hash string is rejected with 422."""
+        base_url = fastapi_service
+        headers = _login_user(base_url, seed_demo, "user_a")
+        matter_id = str(seed_demo["matter_a"]["id"])
+
+        resp = httpx.get(
+            f"{base_url}/documents/check-duplicate",
+            params={"matter_id": matter_id, "file_hash": "Z" * 64},
+            headers=headers,
+            timeout=10,
+        )
+        assert resp.status_code == 422
+
+    def test_check_duplicate_no_matter_access(self, fastapi_service, seed_demo) -> None:
+        """User without matter access gets 404."""
+        base_url = fastapi_service
+        headers = _login_user(base_url, seed_demo, "user_b")
+        matter_id = str(seed_demo["matter_a"]["id"])
+
+        resp = httpx.get(
+            f"{base_url}/documents/check-duplicate",
+            params={"matter_id": matter_id, "file_hash": "a" * 64},
+            headers=headers,
+            timeout=10,
+        )
+        assert resp.status_code == 404
+
+
+@pytest.mark.integration
 class TestDocumentAccessControl:
     def test_upload_no_matter_access_returns_404(
         self, fastapi_service, seed_demo

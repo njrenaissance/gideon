@@ -75,13 +75,16 @@
 | 6.1 | DB models + migration (documents table — metadata, SHA-256 hash, matter association, MinIO path, ingestion status; seed global knowledge matter) | Pending | Pending | Pending |
 | 6.2 | Global knowledge matter (well-known system matter_id for CPL, case law, court rules — accessible to all users) | Pending | Pending | Pending |
 | 6.3 | Manual upload Celery task (SHA-256 dedup, legal hold, store to MinIO, trigger extraction) | Pending | Pending | Pending |
-| 6.4 | Manual upload API endpoint (receive file, call task.delay()) | Pending | Pending | Pending |
-| 6.5 | Bulk upload API endpoint (multi-file, fan-out to individual tasks) | Pending | Pending | Pending |
+| 6.4 | Manual upload API endpoint (receive file via multipart form, SHA-256 hash + dedup, S3 upload, fire-and-forget ingestion) | Pending | **Done** | Pending |
+| 6.5 | Bulk upload CLI command (`opencase document bulk-ingest` — walk directory, client-side pre-hash dedup, per-file upload, progress summary) | Pending | **Done** | **Done** |
 | 6.6 | Document listing/status API endpoint (read-only — query documents by matter, ingestion status, metadata) | Pending | Pending | Pending |
 | 6.7 | Cloud ingestion Celery task (OneDrive/SharePoint via Graph API) | Pending | Pending | Pending |
 | 6.8 | Cloud ingestion Beat schedule (15-min polling interval) | Pending | Pending | Pending |
-| 6.9 | Configuration + env vars (IngestionSettings) | Pending | Pending | Pending |
+| 6.9 | Configuration + env vars (S3Settings: `max_upload_bytes`, `spool_threshold_bytes`) | Pending | **Done** | **Done** |
 | 6.10 | Observability (ingestion spans/metrics) | Pending | Pending | Pending |
+| 6.11 | Duplicate-check API endpoint (`GET /documents/check-duplicate` — lightweight pre-upload hash check) | Pending | **Done** | **Done** |
+| 6.12 | Disk-buffered hashing (SpooledTemporaryFile — small files in RAM, large files spill to disk) | Pending | **Done** | Pending |
+| 6.13 | SDK multipart upload + client-side hashing (`upload_document`, `check_duplicate`, `hash_file`) | Pending | **Done** | Pending |
 
 ## Feature 7 — Audit Logging
 

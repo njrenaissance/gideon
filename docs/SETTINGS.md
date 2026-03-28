@@ -156,12 +156,21 @@ property assembles the full endpoint URL at runtime.
 | `OPENCASE_S3_BUCKET` | `opencase` | Default bucket for document storage |
 | `OPENCASE_S3_USE_SSL` | `false` | Use HTTPS for MinIO connections |
 | `OPENCASE_S3_REGION` | `us-east-1` | AWS region (MinIO default, required by boto3) |
+| `OPENCASE_S3_MAX_UPLOAD_BYTES` | `104857600` (100 MB) | Maximum file size for document uploads. The server rejects files exceeding this limit with HTTP 413. |
+| `OPENCASE_S3_SPOOL_THRESHOLD_BYTES` | `10485760` (10 MB) | In-memory buffer limit during upload hashing. Files smaller than this stay entirely in RAM; larger files spill to a temporary file on disk. Set this according to available server memory and expected file size distribution. |
 
 `OPENCASE_S3_ACCESS_KEY` and `OPENCASE_S3_SECRET_KEY` are required — the
 application will not start without them.
 
 The computed `url` property (e.g. `http://minio:9000`) is available in Python
 as `settings.s3.url` but is not set via an environment variable.
+
+**Sizing guidance:** During document upload, the server buffers one file at a
+time for SHA-256 hashing. Files below `SPOOL_THRESHOLD_BYTES` are hashed
+in memory; larger files use a temporary file on disk. Ensure the temp
+directory (`/tmp` by default) has at least `MAX_UPLOAD_BYTES` of free
+space. For bulk ingestion workloads, the CLI uploads files sequentially
+so only one file is in flight at a time.
 
 ---
 

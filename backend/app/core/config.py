@@ -163,6 +163,8 @@ class S3Settings(BaseSettings):
     bucket: str = "opencase"
     use_ssl: bool = False
     region: str = "us-east-1"
+    max_upload_bytes: int = 100 * 1024 * 1024  # 100 MB
+    spool_threshold_bytes: int = 10 * 1024 * 1024  # 10 MB
 
     @computed_field  # type: ignore[prop-decorator]
     @property
