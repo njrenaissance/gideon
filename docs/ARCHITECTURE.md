@@ -186,6 +186,8 @@ opencase/
   cannot be deleted or overwritten
 - Both manual uploads and cloud-ingested files end up
   here
+- SharePoint document libraries only; personal OneDrive
+  drives are out of scope
 - SharePoint is read-only — OpenCase never
   writes back to cloud storage
 
