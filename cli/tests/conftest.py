@@ -17,6 +17,7 @@ from shared.models.auth import (
     TokenResponse,
 )
 from shared.models.base import MessageResponse
+from shared.models.document import DocumentResponse, DocumentSummary
 from shared.models.enums import TaskState
 from shared.models.firm import FirmResponse
 from shared.models.health import HealthResponse, ReadinessResponse, ServiceChecks
@@ -205,3 +206,31 @@ TASK_SUBMIT_RESPONSE = TaskSubmitResponse(
 )
 
 TASK_CANCEL_RESPONSE = MessageResponse(detail="Task revoked")
+
+DOCUMENT_SUMMARY = DocumentSummary(
+    id="00000000-0000-0000-0000-000000000040",
+    filename="evidence.pdf",
+    content_type="application/pdf",
+    size_bytes=12345,
+    source="defense",
+    classification="unclassified",
+    legal_hold=False,
+    matter_id="00000000-0000-0000-0000-000000000010",
+)
+
+DOCUMENT_RESPONSE = DocumentResponse(
+    id="00000000-0000-0000-0000-000000000040",
+    firm_id="00000000-0000-0000-0000-000000000002",
+    matter_id="00000000-0000-0000-0000-000000000010",
+    filename="evidence.pdf",
+    content_type="application/pdf",
+    size_bytes=12345,
+    source="defense",
+    classification="unclassified",
+    legal_hold=False,
+    file_hash="a" * 64,
+    bates_number=None,
+    uploaded_by="00000000-0000-0000-0000-000000000001",
+    created_at="2025-01-01T00:00:00",
+    updated_at="2025-01-01T00:00:00",
+)

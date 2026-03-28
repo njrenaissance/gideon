@@ -111,6 +111,8 @@ DEFAULTS = {
         "bucket": _ENV_TEST.get("OPENCASE_S3_BUCKET", "opencase"),
         "use_ssl": False,
         "region": _ENV_TEST.get("OPENCASE_S3_REGION", "us-east-1"),
+        "max_upload_bytes": 100 * 1024 * 1024,
+        "spool_threshold_bytes": 10 * 1024 * 1024,
         "url": f"http://{_ENV_TEST['OPENCASE_S3_ENDPOINT']}",
     },
 }

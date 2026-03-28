@@ -34,3 +34,10 @@ class DocumentResponse(DocumentSummary):
     uploaded_by: UUID
     created_at: datetime
     updated_at: datetime
+
+
+class DuplicateCheckResponse(BaseModel):
+    """Result of a duplicate-check query against a matter."""
+
+    exists: bool
+    document_id: UUID | None = None

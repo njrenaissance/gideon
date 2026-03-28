@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 import uuid
 from datetime import UTC, datetime
-from io import BytesIO
+from typing import BinaryIO
 
 from minio import Minio
 from opentelemetry import trace
@@ -58,7 +58,7 @@ class S3StorageService:
         matter_id: uuid.UUID,
         document_id: uuid.UUID,
         extension: str,
-        data: BytesIO,
+        data: BinaryIO,
         size: int,
         content_type: str,
         file_hash: str,
@@ -94,7 +94,7 @@ class S3StorageService:
     def _put_object(
         self,
         key: str,
-        data: BytesIO,
+        data: BinaryIO,
         size: int,
         content_type: str,
         metadata: dict[str, str],

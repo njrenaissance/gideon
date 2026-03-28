@@ -111,22 +111,61 @@ require Admin. List and get are available to any authenticated user.
 Only tasks registered in `TASK_REGISTRY` can be submitted via the
 API. Currently registered: `ping`.
 
-### Documents (stub)
+### Documents
 
 ```bash
+# List all documents accessible to the current user
 opencase document list
+opencase document list --json
+
+# Get metadata for a single document
 opencase document get <document-id>
-opencase document upload --matter-id <uuid> --filename evidence.pdf \
-  --content-type application/pdf --size-bytes 1024 \
-  --file-hash <sha256-hex>
-opencase document upload --matter-id <uuid> --filename report.pdf \
-  --content-type application/pdf --size-bytes 2048 \
-  --file-hash <sha256-hex> --source government_production \
-  --classification brady --bates-number GOV-001
+
+# Upload a single file to a matter
+opencase document upload ./evidence.pdf --matter-id <uuid>
+opencase document upload ./report.pdf --matter-id <uuid> \
+  --source government_production --classification brady \
+  --bates-number GOV-001
+
+# Bulk-ingest all supported files from a local directory
+opencase document bulk-ingest ./discovery-folder --matter-id <uuid>
+opencase document bulk-ingest ./discovery-folder --matter-id <uuid> \
+  --source government_production --classification unclassified
+
+# Preview which files would be ingested (no upload)
+opencase document bulk-ingest ./discovery-folder --matter-id <uuid> --dry-run
+
+# Non-recursive (top-level files only, skip subdirectories)
+opencase document bulk-ingest ./discovery-folder --matter-id <uuid> --no-recursive
+
+# JSON output (machine-readable per-file results)
+opencase document bulk-ingest ./discovery-folder --matter-id <uuid> --json
 ```
 
-All document endpoints return stub responses. Real upload
-(MinIO storage, SHA-256 computation) will be added in Feature 6.
+**Upload** accepts a file path as a positional argument. The server
+computes the SHA-256 hash, checks for duplicates within the matter,
+stores the original in MinIO, and returns the document metadata.
+
+**Bulk-ingest** recursively walks a directory (by default), filters to
+supported file types (PDF, Word, Excel, PowerPoint, RTF, text, CSV,
+HTML, and common image formats), and uploads each file sequentially.
+
+Before uploading, the CLI hashes each file locally and calls the
+`/documents/check-duplicate` endpoint. Files that already exist in the
+matter are skipped without uploading, saving bandwidth on re-runs.
+
+The summary line reports uploaded, skipped (duplicate), and failed
+counts. The exit code is 0 if all files succeeded or were skipped, and
+1 if any file failed.
+
+| Option | Default | Description |
+| --- | --- | --- |
+| `--matter-id` | **required** | Target matter UUID |
+| `--source` | `defense` | Document source (`defense`, `government_production`, `court`, `work_product`) |
+| `--classification` | `unclassified` | Document classification |
+| `--recursive / --no-recursive` | `--recursive` | Walk subdirectories |
+| `--dry-run` | off | List files without uploading |
+| `--bates-number` | none | Bates number (single upload only) |
 
 ### Prompts (stub)
 
