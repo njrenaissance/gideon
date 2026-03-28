@@ -13,7 +13,6 @@ from shared.models.auth import (
 )
 from shared.models.base import MessageResponse
 from shared.models.document import (
-    CreateDocumentRequest,
     DocumentResponse,
     DocumentSummary,
 )
@@ -54,7 +53,6 @@ from shared.models.user import (
 
 __all__ = [
     "Classification",
-    "CreateDocumentRequest",
     "CreateMatterRequest",
     "CreatePromptRequest",
     "CreateUserRequest",

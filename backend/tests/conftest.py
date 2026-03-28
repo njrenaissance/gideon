@@ -105,6 +105,9 @@ class FakeSession:
     async def delete(self, obj: object) -> None:
         self._deleted.append(obj)
 
+    async def flush(self) -> None:
+        pass
+
     async def commit(self) -> None:
         self.committed = True
 
@@ -112,7 +115,11 @@ class FakeSession:
         pass
 
     async def refresh(self, obj: object) -> None:
-        pass
+        # Simulate server-default timestamps that PostgreSQL would populate
+        now = datetime.now(UTC)
+        for attr in ("created_at", "updated_at"):
+            if hasattr(obj, attr) and getattr(obj, attr) is None:
+                setattr(obj, attr, now)
 
 
 @asynccontextmanager

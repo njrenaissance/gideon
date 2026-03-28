@@ -5,8 +5,15 @@ from __future__ import annotations
 import uuid
 from datetime import UTC, datetime
 
-from shared.models.enums import MatterStatus, Role, TaskState
+from shared.models.enums import (
+    Classification,
+    DocumentSource,
+    MatterStatus,
+    Role,
+    TaskState,
+)
 
+from app.db.models.document import Document
 from app.db.models.firm import Firm
 from app.db.models.matter import Matter
 from app.db.models.matter_access import MatterAccess
@@ -73,6 +80,27 @@ def make_task_submission(**kwargs: object) -> TaskSubmission:
     }
     defaults.update(kwargs)
     return TaskSubmission(**defaults)
+
+
+def make_document(**kwargs: object) -> Document:
+    defaults: dict[str, object] = {
+        "id": uuid.uuid4(),
+        "firm_id": uuid.uuid4(),
+        "matter_id": uuid.uuid4(),
+        "filename": "test.pdf",
+        "file_hash": "a" * 64,
+        "content_type": "application/pdf",
+        "size_bytes": 1024,
+        "source": DocumentSource.defense,
+        "classification": Classification.unclassified,
+        "bates_number": None,
+        "legal_hold": False,
+        "uploaded_by": uuid.uuid4(),
+        "created_at": datetime.now(UTC),
+        "updated_at": datetime.now(UTC),
+    }
+    defaults.update(kwargs)
+    return Document(**defaults)
 
 
 def make_matter_access(**kwargs: object) -> MatterAccess:

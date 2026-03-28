@@ -86,6 +86,11 @@ documents_created = meter.create_counter(
     description="Documents created",
 )
 
+documents_duplicates_rejected = meter.create_counter(
+    "opencase.documents.duplicates_rejected",
+    description="Duplicate document upload rejections",
+)
+
 # ---------------------------------------------------------------------------
 # Prompts (Feature 1.8)
 # ---------------------------------------------------------------------------

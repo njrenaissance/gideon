@@ -12,8 +12,8 @@ from shared.models.enums import Role
 
 from app.core.permissions import (
     PermissionFilter,
-    _fetch_matter_access,
     build_qdrant_filter,
+    fetch_matter_access,
     require_matter_access,
     require_role,
 )
@@ -147,7 +147,7 @@ async def test_firm_id_always_set() -> None:
 async def test_cross_firm_matter_returns_404() -> None:
     """A user with no MatterAccess row for another firm's matter gets 404.
 
-    The firm-scope join in _fetch_matter_access ensures that even if a
+    The firm-scope join in fetch_matter_access ensures that even if a
     MatterAccess row somehow existed across firms, the Matter.firm_id
     check would reject it.
     """
@@ -162,7 +162,7 @@ async def test_cross_firm_matter_returns_404() -> None:
 
 
 # ---------------------------------------------------------------------------
-# _fetch_matter_access tests
+# fetch_matter_access tests
 # ---------------------------------------------------------------------------
 
 
@@ -172,7 +172,7 @@ async def test_fetch_returns_access_row() -> None:
     access = _make_access(user.id)
     db = _mock_db(access)
 
-    result = await _fetch_matter_access(_MATTER_ID, user, db)
+    result = await fetch_matter_access(_MATTER_ID, user, db)
 
     assert result is access
 
@@ -183,7 +183,7 @@ async def test_fetch_raises_404_when_no_row() -> None:
     db = _mock_db(None)
 
     with pytest.raises(HTTPException) as exc_info:
-        await _fetch_matter_access(_MATTER_ID, user, db)
+        await fetch_matter_access(_MATTER_ID, user, db)
 
     assert exc_info.value.status_code == 404
 

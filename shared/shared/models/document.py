@@ -3,7 +3,7 @@
 from datetime import datetime
 from uuid import UUID
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 
 from shared.models.enums import Classification, DocumentSource
 
@@ -34,21 +34,3 @@ class DocumentResponse(DocumentSummary):
     uploaded_by: UUID
     created_at: datetime
     updated_at: datetime
-
-
-# ---------------------------------------------------------------------------
-# Requests
-# ---------------------------------------------------------------------------
-
-
-class CreateDocumentRequest(BaseModel):
-    matter_id: UUID
-    filename: str = Field(min_length=1, max_length=512)
-    content_type: str = Field(min_length=1, max_length=255)
-    size_bytes: int = Field(ge=0)
-    file_hash: str = Field(
-        min_length=64, max_length=64, description="SHA-256 hex digest"
-    )
-    source: DocumentSource = DocumentSource.defense
-    classification: Classification = Classification.unclassified
-    bates_number: str | None = Field(default=None, max_length=100)
