@@ -17,7 +17,12 @@ logger = logging.getLogger(__name__)
 tracer = trace.get_tracer(__name__)
 
 
-@shared_task(name="opencase.chunk_document")  # type: ignore[untyped-decorator]
+@shared_task(  # type: ignore[untyped-decorator]
+    name="opencase.chunk_document",
+    autoretry_for=(Exception,),
+    max_retries=3,
+    retry_backoff=True,
+)
 def chunk_document(
     document_id: str,
     text: str,
@@ -63,7 +68,7 @@ async def _chunk(
             span.set_attribute("chunking.text_length", len(text))
 
             # Persist chunks.json to S3
-            chunks_key = f"{s3_prefix}/chunks.json"
+            chunks_key = f"{s3_prefix.rstrip('/')}/chunks.json"
             chunks_data: list[dict[str, object]] = [c.to_dict() for c in chunks]
             storage = get_storage_service()
             await storage.upload_json(
