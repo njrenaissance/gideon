@@ -69,12 +69,12 @@ class TestChunkingSpans:
         span = [s for s in spans if s.name == "chunking.chunk_text"][0]
         assert span.attributes["chunking.document_id"] == "doc-1"
         assert span.attributes["chunking.text_length"] == len(text)
+        assert span.attributes["chunking.strategy"] == "RecursiveStrategy"
 
     def test_span_has_result_attributes(self, otel_spans):
         spans, results = self._run(otel_spans)
         span = [s for s in spans if s.name == "chunking.chunk_text"][0]
         assert span.attributes["chunking.chunk_count"] == len(results)
-        assert span.attributes["chunking.strategy"] == "RecursiveStrategy"
 
     def test_records_error_on_failure(self, otel_spans):
         provider, exporter = otel_spans

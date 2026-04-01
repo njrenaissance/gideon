@@ -14,6 +14,7 @@ from qdrant_client import AsyncQdrantClient, models
 from app.core.metrics import (
     vectorstore_delete_completed,
     vectorstore_delete_duration_seconds,
+    vectorstore_delete_failed,
     vectorstore_upsert_completed,
     vectorstore_upsert_duration_seconds,
     vectorstore_upsert_failed,
@@ -97,6 +98,8 @@ class QdrantVectorStore:
         if not embeddings:
             return 0
 
+        start_time = time.monotonic()
+
         with tracer.start_as_current_span(
             "vectorstore.upsert_vectors",
             attributes={
@@ -107,7 +110,6 @@ class QdrantVectorStore:
                 ),
             },
         ) as span:
-            start_time = time.monotonic()
             try:
                 points = [
                     self._build_point(emb, payload_metadata) for emb in embeddings
@@ -158,6 +160,8 @@ class QdrantVectorStore:
         Returns:
             Number of points deleted (best-effort count via scroll).
         """
+        start_time = time.monotonic()
+
         with tracer.start_as_current_span(
             "vectorstore.delete_by_document",
             attributes={
@@ -165,7 +169,6 @@ class QdrantVectorStore:
                 "vectorstore.document_id": document_id,
             },
         ) as span:
-            start_time = time.monotonic()
             try:
                 # Count before delete so we can report how many were removed.
                 scroll_result = await self._client.scroll(
@@ -215,6 +218,13 @@ class QdrantVectorStore:
                 elapsed = time.monotonic() - start_time
                 span.set_status(StatusCode.ERROR, str(exc))
                 span.record_exception(exc)
+                vectorstore_delete_failed.add(
+                    1,
+                    {
+                        "collection": self._collection,
+                        "error_type": type(exc).__name__,
+                    },
+                )
                 vectorstore_delete_duration_seconds.record(
                     elapsed, {"collection": self._collection}
                 )

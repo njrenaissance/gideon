@@ -71,15 +71,16 @@ class ChunkingService:
             return []
 
         strategy_name = type(self._strategy).__name__
+        start_time = time.monotonic()
 
         with tracer.start_as_current_span(
             "chunking.chunk_text",
             attributes={
                 "chunking.document_id": document_id,
                 "chunking.text_length": len(text),
+                "chunking.strategy": strategy_name,
             },
         ) as span:
-            start_time = time.monotonic()
             try:
                 meta = metadata or {}
                 chunks = self._strategy.split(text)
@@ -100,7 +101,6 @@ class ChunkingService:
                 ]
 
                 span.set_attribute("chunking.chunk_count", len(results))
-                span.set_attribute("chunking.strategy", strategy_name)
 
                 elapsed = time.monotonic() - start_time
                 attrs = {"strategy": strategy_name}
@@ -116,7 +116,7 @@ class ChunkingService:
                 span.set_status(StatusCode.ERROR, str(exc))
                 span.record_exception(exc)
                 chunking_failed.add(1, {"error_type": type(exc).__name__})
-                chunking_duration_seconds.record(elapsed, {"strategy": "unknown"})
+                chunking_duration_seconds.record(elapsed, {"strategy": strategy_name})
                 raise
 
     @staticmethod
