@@ -22,34 +22,26 @@ def _make_service(host: str, port: int) -> TikaExtractionService:
     return TikaExtractionService(settings)
 
 
-# TODO: All tests in TestTikaLive fail — TikaExtractionService has no .close() method.
-# Remove the await svc.close() calls or add a close() method to the service.
 @pytest.mark.integration
 class TestTikaLive:
     @pytest.mark.asyncio
     async def test_health_check(self, tika_service):
         host, port = tika_service
         svc = _make_service(host, port)
-        try:
-            assert await svc.health_check() is True
-        finally:
-            await svc.close()
+        assert await svc.health_check() is True
 
     @pytest.mark.asyncio
     async def test_extract_plain_text(self, tika_service):
         host, port = tika_service
         svc = _make_service(host, port)
-        try:
-            result = await svc.extract_text(
-                b"Hello from OpenCase integration test",
-                "test.txt",
-                "text/plain",
-            )
-            assert "Hello from OpenCase" in result.text
-            assert result.content_type  # Tika should detect a type
-            assert result.ocr_applied is False
-        finally:
-            await svc.close()
+        result = await svc.extract_text(
+            b"Hello from OpenCase integration test",
+            "test.txt",
+            "text/plain",
+        )
+        assert "Hello from OpenCase" in result.text
+        assert result.content_type  # Tika should detect a type
+        assert result.ocr_applied is False
 
     @pytest.mark.asyncio
     async def test_extract_pdf(self, tika_service):
@@ -79,9 +71,6 @@ class TestTikaLive:
             b"startxref\n430\n%%EOF"
         )
 
-        try:
-            result = await svc.extract_text(pdf_bytes, "test.pdf", "application/pdf")
-            assert "OpenCase Test" in result.text
-            assert "pdf" in result.content_type.lower()
-        finally:
-            await svc.close()
+        result = await svc.extract_text(pdf_bytes, "test.pdf", "application/pdf")
+        assert "OpenCase Test" in result.text
+        assert "pdf" in result.content_type.lower()
