@@ -165,6 +165,7 @@ def test_ingest_document_full_pipeline():
         source="defense",
         bates_number=None,
         ingestion_status="pending",
+        legal_hold=False,
     )
     mock_matter = SimpleNamespace(client_id="client-1")
 

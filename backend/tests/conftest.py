@@ -89,13 +89,16 @@ class FakeSession:
             if isinstance(val, list):
                 result.scalars.return_value.all.return_value = val
                 result.scalar_one_or_none.return_value = val[0] if val else None
+                result.scalar_one.return_value = val[0] if val else None
             else:
                 result.scalar_one_or_none.return_value = val
+                result.scalar_one.return_value = val
                 result.scalars.return_value.all.return_value = (
                     [val] if val is not None else []
                 )
         else:
             result.scalar_one_or_none.return_value = None
+            result.scalar_one.return_value = None
             result.scalars.return_value.all.return_value = []
         return result
 
@@ -146,6 +149,14 @@ def auth_header(user: User) -> dict[str, str]:
     """Return an Authorization header dict for the given user."""
     token = create_access_token(user)
     return {"Authorization": f"Bearer {token}"}
+
+
+def fake_with_docs(docs: list, total: int | None = None) -> FakeSession:
+    """Create a FakeSession pre-loaded with count + docs results for list endpoints."""
+    fake = FakeSession()
+    fake.add_result(total if total is not None else len(docs))  # count query
+    fake.add_results_list(docs)  # main query
+    return fake
 
 
 # ---------------------------------------------------------------------------

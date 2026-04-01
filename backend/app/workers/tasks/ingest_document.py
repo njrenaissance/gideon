@@ -47,9 +47,18 @@ async def _update_ingestion_status(document_id: str, status: IngestionStatus) ->
                     document_id,
                 )
                 return
-            if doc.ingestion_status in (
-                IngestionStatus.indexed,
-                IngestionStatus.failed,
+            # Allow failed → pending (re-ingest); block other regressions
+            if doc.ingestion_status == IngestionStatus.indexed:
+                logger.warning(
+                    "_update_ingestion_status: refusing to regress %s from %s to %s",
+                    document_id,
+                    doc.ingestion_status,
+                    status,
+                )
+                return
+            if (
+                doc.ingestion_status == IngestionStatus.failed
+                and status != IngestionStatus.pending
             ):
                 logger.warning(
                     "_update_ingestion_status: refusing to regress %s from %s to %s",
@@ -79,6 +88,26 @@ def ingest_document(document_id: str, s3_key: str) -> dict[str, object]:
     return asyncio.run(_ingest(document_id, s3_key))
 
 
+async def _check_legal_hold(document_id: str) -> bool:
+    """Return True if the document is under legal hold.
+
+    Reuses the same engine-per-call pattern as ``_update_ingestion_status``
+    and ``_run_metadata_lookup`` to avoid event-loop conflicts in Celery.
+    """
+    from app.db.models.document import Document
+
+    engine = create_async_engine(settings.db.url, pool_pre_ping=True)
+    try:
+        async with AsyncSession(engine) as session:
+            doc = await session.get(Document, document_id)
+            if doc is None:
+                logger.warning("_check_legal_hold: document %s not found", document_id)
+                return False
+            return bool(doc.legal_hold)
+    finally:
+        await engine.dispose()
+
+
 async def _ingest(document_id: str, s3_key: str) -> dict[str, object]:
     with tracer.start_as_current_span(
         "ingest_document",
@@ -89,6 +118,20 @@ async def _ingest(document_id: str, s3_key: str) -> dict[str, object]:
         },
     ) as span:
         try:
+            # Legal hold guard — skip ingestion for held documents
+            if await _check_legal_hold(document_id):
+                logger.warning(
+                    "ingest_document skipped: document %s is under legal hold",
+                    document_id,
+                )
+                span.set_attribute("ingestion.skipped", True)
+                span.set_attribute("ingestion.skip_reason", "legal_hold")
+                return {
+                    "status": "skipped",
+                    "reason": "legal_hold",
+                    "document_id": document_id,
+                }
+
             s3_prefix = s3_key.rsplit("/", 1)[0]
 
             await _update_ingestion_status(document_id, IngestionStatus.extracting)
