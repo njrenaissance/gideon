@@ -14,7 +14,7 @@ import pytest
 from shared.models.enums import Role
 
 from app.storage import get_storage_service
-from tests.conftest import FakeSession, api_client, auth_header
+from tests.conftest import FakeSession, api_client, auth_header, fake_with_docs
 from tests.factories import make_document, make_user
 
 # ---------------------------------------------------------------------------
@@ -149,24 +149,28 @@ class TestListDocuments:
     @pytest.mark.asyncio
     async def test_returns_empty_list_when_no_documents(self) -> None:
         user = make_user(firm_id=_FIRM_ID, role=Role.admin)
-        fake = FakeSession()
+        fake = fake_with_docs([])
         async with api_client(user, fake) as ac:
             resp = await ac.get("/documents/", headers=auth_header(user))
         assert resp.status_code == 200
-        assert resp.json() == []
+        data = resp.json()
+        assert data["items"] == []
+        assert data["total"] == 0
 
     @pytest.mark.asyncio
     async def test_returns_documents_for_admin(self) -> None:
         user = make_user(firm_id=_FIRM_ID, role=Role.admin)
         doc = make_document(firm_id=_FIRM_ID, matter_id=_MATTER_ID, uploaded_by=user.id)
-        fake = FakeSession()
-        fake.add_results_list([doc])
+        fake = fake_with_docs([doc])
         async with api_client(user, fake) as ac:
             resp = await ac.get("/documents/", headers=auth_header(user))
         assert resp.status_code == 200
         data = resp.json()
-        assert len(data) == 1
-        assert data[0]["id"] == str(doc.id)
+        assert len(data["items"]) == 1
+        assert data["items"][0]["id"] == str(doc.id)
+        assert data["total"] == 1
+        assert data["offset"] == 0
+        assert data["limit"] == 50
 
 
 # ---------------------------------------------------------------------------

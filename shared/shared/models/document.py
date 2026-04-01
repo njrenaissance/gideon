@@ -37,6 +37,23 @@ class DocumentResponse(DocumentSummary):
     updated_at: datetime
 
 
+class DocumentListResponse(BaseModel):
+    """Paginated document listing."""
+
+    items: list[DocumentSummary]
+    total: int
+    offset: int
+    limit: int
+
+
+class ReIngestResponse(BaseModel):
+    """Response from re-ingest endpoint."""
+
+    document_id: UUID
+    ingestion_status: IngestionStatus
+    message: str
+
+
 class DuplicateCheckResponse(BaseModel):
     """Result of a duplicate-check query against a matter."""
 

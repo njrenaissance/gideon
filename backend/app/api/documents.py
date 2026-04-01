@@ -6,6 +6,7 @@ import logging
 import re
 import uuid
 from pathlib import PurePosixPath
+from typing import Literal
 from urllib.parse import quote
 
 from fastapi import (
@@ -21,13 +22,15 @@ from fastapi import (
 from fastapi.responses import Response
 from opentelemetry import trace
 from shared.models.document import (
+    DocumentListResponse,
     DocumentResponse,
     DocumentSummary,
     DuplicateCheckResponse,
     IngestionConfigResponse,
+    ReIngestResponse,
 )
 from shared.models.enums import Classification, DocumentSource, IngestionStatus, Role
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -353,16 +356,34 @@ async def check_duplicate(
 # ---------------------------------------------------------------------------
 
 
-@router.get("/", response_model=list[DocumentSummary])
+_SORTABLE_COLUMNS = {
+    "created_at": Document.created_at,
+    "filename": Document.filename,
+    "size_bytes": Document.size_bytes,
+    "updated_at": Document.updated_at,
+}
+
+
+@router.get("/", response_model=DocumentListResponse)
 async def list_documents(
     matter_id: uuid.UUID | None = Query(None),  # noqa: B008
+    ingestion_status: IngestionStatus | None = Query(None),  # noqa: B008
+    source: DocumentSource | None = Query(None),  # noqa: B008
+    classification: Classification | None = Query(None),  # noqa: B008
+    filename: str | None = Query(None),  # noqa: B008
+    offset: int = Query(0, ge=0),  # noqa: B008
+    limit: int = Query(50, ge=1, le=200),  # noqa: B008
+    sort_by: Literal[  # noqa: B008
+        "created_at", "filename", "size_bytes", "updated_at"
+    ] = Query("created_at"),
+    sort_order: Literal["asc", "desc"] = Query("desc"),  # noqa: B008
     user: User = Depends(get_current_user),  # noqa: B008
     db: AsyncSession = Depends(get_db),  # noqa: B008
-) -> list[DocumentSummary]:
+) -> DocumentListResponse:
     """List documents accessible to the current user.
 
-    Optionally filter by ``matter_id``. Non-admin users only see documents
-    in matters they have been granted access to.
+    Supports filtering by matter, ingestion status, source, classification,
+    and filename (partial, case-insensitive). Results are paginated.
     """
     with tracer.start_as_current_span(
         "documents.list",
@@ -374,17 +395,42 @@ async def list_documents(
             await _verify_matter_access(matter_id, user, db)
             stmt = stmt.where(Document.matter_id == matter_id)
         elif user.role != Role.admin:
-            # Non-admin without explicit matter_id: scope to accessible matters
             stmt = stmt.join(
                 MatterAccess,
                 (MatterAccess.matter_id == Document.matter_id)
                 & (MatterAccess.user_id == user.id),
             )
 
-        stmt = stmt.order_by(Document.created_at.desc())
+        # Apply filters
+        if ingestion_status is not None:
+            stmt = stmt.where(Document.ingestion_status == ingestion_status)
+        if source is not None:
+            stmt = stmt.where(Document.source == source)
+        if classification is not None:
+            stmt = stmt.where(Document.classification == classification)
+        if filename is not None:
+            safe = filename.replace("%", r"\%").replace("_", r"\_")
+            stmt = stmt.where(Document.filename.ilike(f"%{safe}%", escape="\\"))
+
+        # Count total before pagination
+        count_stmt = select(func.count()).select_from(stmt.subquery())
+        total = (await db.execute(count_stmt)).scalar_one()
+
+        # Sorting
+        col = _SORTABLE_COLUMNS[sort_by]
+        stmt = stmt.order_by(col.desc() if sort_order == "desc" else col.asc())
+
+        # Pagination
+        stmt = stmt.offset(offset).limit(limit)
+
         result = await db.execute(stmt)
         docs = result.scalars().all()
-        return [_doc_to_summary(d) for d in docs]
+        return DocumentListResponse(
+            items=[_doc_to_summary(d) for d in docs],
+            total=total,
+            offset=offset,
+            limit=limit,
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -454,4 +500,78 @@ async def download_document(
                     f"filename*=UTF-8''{encoded_name}"
                 ),
             },
+        )
+
+
+# ---------------------------------------------------------------------------
+# POST /documents/{document_id}/re-ingest
+# ---------------------------------------------------------------------------
+
+
+@router.post(
+    "/{document_id}/re-ingest",
+    response_model=ReIngestResponse,
+    status_code=status.HTTP_202_ACCEPTED,
+    responses={404: {}, 409: {}},
+)
+async def re_ingest_document(
+    document_id: uuid.UUID,
+    user: User = Depends(get_current_user),  # noqa: B008
+    db: AsyncSession = Depends(get_db),  # noqa: B008
+) -> ReIngestResponse:
+    """Re-ingest a document that previously failed ingestion.
+
+    Only documents with ``ingestion_status = failed`` can be re-ingested.
+    Resets the status to ``pending`` and dispatches a new ingestion task.
+    """
+    with tracer.start_as_current_span(
+        "documents.re_ingest",
+        attributes={"user.id": str(user.id), "document.id": str(document_id)},
+    ):
+        doc = await _get_document_with_access(document_id, user, db)
+
+        if doc.legal_hold:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="Cannot re-ingest a document under legal hold",
+            )
+
+        if doc.ingestion_status != IngestionStatus.failed:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=(
+                    f"Only failed documents can be re-ingested; "
+                    f"current status is '{doc.ingestion_status.value}'"
+                ),
+            )
+
+        # Reset to pending
+        doc.ingestion_status = IngestionStatus.pending
+        await db.commit()
+        await db.refresh(doc)
+
+        # Reconstruct S3 key and dispatch ingestion
+        extension = _extension_from_filename(doc.filename)
+        s3_key = S3StorageService.object_key(
+            doc.firm_id, doc.matter_id, doc.id, extension
+        )
+
+        try:
+            from app.ingestion import get_ingestion_service
+
+            ingestion = get_ingestion_service()
+            await ingestion.process_document(doc.id, s3_key)
+        except Exception:
+            logger.exception("Re-ingest dispatch failed for document %s", doc.id)
+            doc.ingestion_status = IngestionStatus.failed
+            await db.commit()
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to dispatch ingestion task",
+            ) from None
+
+        return ReIngestResponse(
+            document_id=doc.id,
+            ingestion_status=doc.ingestion_status,
+            message="Ingestion task submitted",
         )
