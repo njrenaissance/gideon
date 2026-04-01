@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import logging
-import math
 import time
 from typing import TYPE_CHECKING
 
@@ -76,7 +75,7 @@ class EmbeddingService:
                 raise ValueError(msg)
 
         batch_size = self._settings.batch_size
-        num_batches = math.ceil(len(chunks) / batch_size)
+        start_time = time.monotonic()
 
         with tracer.start_as_current_span(
             "embedding.embed_chunks",
@@ -86,9 +85,9 @@ class EmbeddingService:
                 "embedding.batch_size": batch_size,
             },
         ) as span:
-            start_time = time.monotonic()
             try:
                 results: list[EmbeddingResult] = []
+                batches_completed = 0
 
                 async with httpx.AsyncClient(
                     base_url=self._settings.base_url,
@@ -135,20 +134,22 @@ class EmbeddingService:
                                 )
                             )
 
+                        batches_completed += 1
+
                 span.set_attribute("embedding.result_count", len(results))
-                span.set_attribute("embedding.batch_count", num_batches)
+                span.set_attribute("embedding.batch_count", batches_completed)
 
                 elapsed = time.monotonic() - start_time
                 attrs = {"model": self._settings.model}
                 embedding_completed.add(1, attrs)
                 embedding_duration_seconds.record(elapsed, attrs)
                 embedding_chunks_processed.record(len(chunks), attrs)
-                embedding_batch_count.record(num_batches, attrs)
+                embedding_batch_count.record(batches_completed, attrs)
 
                 logger.info(
                     "Embedded %d chunks in %d batch(es) using %s",
                     len(results),
-                    num_batches,
+                    batches_completed,
                     self._settings.model,
                 )
                 return results

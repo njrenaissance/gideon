@@ -246,6 +246,11 @@ vectorstore_delete_completed = meter.create_counter(
     description="Successful vector delete operations",  # attrs: collection
 )
 
+vectorstore_delete_failed = meter.create_counter(
+    "opencase.vectorstore.delete.failed",
+    description="Failed vector delete operations",  # attrs: collection, error_type
+)
+
 vectorstore_delete_duration_seconds = meter.create_histogram(
     "opencase.vectorstore.delete.duration_seconds",
     description="Vector delete latency in seconds",

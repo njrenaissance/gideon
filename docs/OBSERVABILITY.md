@@ -193,6 +193,7 @@ All metric instruments are defined in `backend/app/core/metrics.py`:
 | `opencase.vectorstore.upsert.duration_seconds` | Histogram (s) | `collection` | Upsert latency |
 | `opencase.vectorstore.upsert.points` | Histogram ({point}) | `collection` | Points upserted per call |
 | `opencase.vectorstore.delete.completed` | Counter | `collection` | Successful deletes |
+| `opencase.vectorstore.delete.failed` | Counter | `collection`, `error_type` | Failed deletes |
 | `opencase.vectorstore.delete.duration_seconds` | Histogram (s) | `collection` | Delete latency |
 
 New features should add their metrics to `metrics.py` following the

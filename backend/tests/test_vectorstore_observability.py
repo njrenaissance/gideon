@@ -47,6 +47,7 @@ def mock_metrics():
         "vectorstore_upsert_duration_seconds": MagicMock(),
         "vectorstore_upsert_points": MagicMock(),
         "vectorstore_delete_completed": MagicMock(),
+        "vectorstore_delete_failed": MagicMock(),
         "vectorstore_delete_duration_seconds": MagicMock(),
     }
 
@@ -300,6 +301,24 @@ class TestVectorstoreMetrics:
         args, _ = mock_metrics["vectorstore_delete_completed"].add.call_args
         assert args[0] == 1
         assert args[1]["collection"] == "test_collection"
+
+    @pytest.mark.asyncio
+    async def test_delete_failed_counter(self, mock_metrics):
+        mock_client = AsyncMock()
+        mock_client.scroll.side_effect = RuntimeError("Qdrant down")
+        svc = _make_service(mock_client)
+
+        with (
+            patch.multiple("app.vectorstore.service", **mock_metrics),
+            pytest.raises(RuntimeError),
+        ):
+            await svc.delete_by_document("doc-1")
+
+        mock_metrics["vectorstore_delete_failed"].add.assert_called_once()
+        args, _ = mock_metrics["vectorstore_delete_failed"].add.call_args
+        assert args[0] == 1
+        assert args[1]["collection"] == "test_collection"
+        assert args[1]["error_type"] == "RuntimeError"
 
     @pytest.mark.asyncio
     async def test_delete_duration_recorded(self, mock_metrics):
