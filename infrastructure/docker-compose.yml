@@ -328,6 +328,9 @@ services:
       - OPENCASE_DB_URL=postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
       - OPENCASE_CELERY_BROKER_URL=redis://redis:6379/0
       - OPENCASE_CELERY_RESULT_BACKEND=db+postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/opencase_tasks
+      - OPENCASE_CELERY_TASK_SOFT_TIME_LIMIT=${OPENCASE_CELERY_TASK_SOFT_TIME_LIMIT:-300}
+      - OPENCASE_CELERY_TASK_HARD_TIME_LIMIT=${OPENCASE_CELERY_TASK_HARD_TIME_LIMIT:-600}
+      - OPENCASE_CELERY_WORKER_CONCURRENCY=${OPENCASE_CELERY_WORKER_CONCURRENCY:-2}
       - OPENCASE_LOG_LEVEL=${OPENCASE_LOG_LEVEL:-INFO}
       - OPENCASE_LOG_OUTPUT=${OPENCASE_LOG_OUTPUT:-stdout}
       - OPENCASE_DEPLOYMENT_MODE=${DEPLOYMENT_MODE:-airgapped}
@@ -417,7 +420,7 @@ services:
       dockerfile: backend/docker/Dockerfile
       args:
         INSTALL_EXTRAS: monitoring
-    command: celery -A app.workers flower --port=5555 --url_prefix=/flower
+    command: celery -A app.workers flower --port=5555 --url_prefix=/flower --broker_api=redis://redis:6379/0
     ports:
       - "${OPENCASE_FLOWER_PORT:-5555}:5555"
     environment:
