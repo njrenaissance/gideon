@@ -3,11 +3,14 @@
 from __future__ import annotations
 
 import json
+import logging
 from collections.abc import AsyncGenerator
 
 from fastapi import APIRouter, Depends, status
 from fastapi.responses import StreamingResponse
+from opentelemetry import context as otel_context
 from opentelemetry import trace
+from opentelemetry.trace import StatusCode
 from shared.models.chat import (
     ChatQueryResponse,
     ChatSessionResponse,
@@ -21,6 +24,7 @@ from app.db import get_db
 from app.db.models.user import User
 from app.rag.pipeline import run_query, stream_query
 
+logger = logging.getLogger(__name__)
 tracer = trace.get_tracer(__name__)
 
 router = APIRouter(prefix="/chats", tags=["chats"])
@@ -94,6 +98,11 @@ async def submit_query_stream(
         "chats.submit_query_stream",
         attributes={"user.id": str(user.id), "matter.id": str(body.matter_id)},
     )
+    # Install the span as the current context so child spans created inside
+    # stream_query attach to the correct parent.
+    ctx = trace.set_span_in_context(span)
+    attachment = otel_context.attach(ctx)
+
     gen = stream_query(body.query, user, body.matter_id, body.session_id, db)
 
     async def _sse() -> AsyncGenerator[bytes, None]:
@@ -103,9 +112,18 @@ async def submit_query_stream(
             yield b"data: [DONE]\n\n"
         except Exception as exc:
             span.record_exception(exc)
+            span.set_status(StatusCode.ERROR, str(exc))
+            logger.error(
+                "Stream error for user %s matter %s: %s",
+                user.id,
+                body.matter_id,
+                exc,
+                exc_info=True,
+            )
             yield f"data: {json.dumps({'error': str(exc)})}\n\n".encode()
             yield b"data: [DONE]\n\n"
         finally:
+            otel_context.detach(attachment)
             span.end()
 
     return StreamingResponse(_sse(), media_type="text/event-stream")
