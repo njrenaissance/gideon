@@ -18,7 +18,6 @@ import logging
 import time
 import uuid
 from collections.abc import AsyncGenerator
-from typing import TYPE_CHECKING
 
 import httpx
 from fastapi import HTTPException, status
@@ -36,9 +35,6 @@ from app.db.models.chat_query import ChatQuery
 from app.db.models.chat_session import ChatSession
 from app.db.models.user import User
 from app.vectorstore import get_vectorstore_service
-
-if TYPE_CHECKING:
-    pass
 
 logger = logging.getLogger(__name__)
 tracer = trace.get_tracer(__name__)
@@ -461,20 +457,28 @@ async def stream_query(
             )
 
             full_response: list[str] = []
-            async for chunk in llm.astream(messages):
-                token = str(chunk.content)
-                full_response.append(token)
-                yield token
+            stream_error: BaseException | None = None
+            try:
+                async for chunk in llm.astream(messages):
+                    token = str(chunk.content)
+                    full_response.append(token)
+                    yield token
+            except Exception as exc:
+                stream_error = exc
 
             latency_ms = int((time.monotonic() - start) * 1000)
             span.set_attribute("rag.latency_ms", latency_ms)
             span.set_attribute("rag.chunk_count", len(chunks))
 
-            # 7. Persist — db session is still alive at this point
+            # 7. Always persist — even a partial response is an audit record.
+            #    db session remains open until StreamingResponse is consumed.
             session = await _get_or_create_session(db, user, matter_id, session_id)
             await _save_query(
                 db, session, user, query, "".join(full_response), chunks, latency_ms
             )
+
+            if stream_error is not None:
+                raise stream_error
 
         except Exception as exc:
             span.set_status(StatusCode.ERROR, str(exc))
