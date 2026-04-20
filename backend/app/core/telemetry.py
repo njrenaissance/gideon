@@ -81,11 +81,13 @@ from app.core.config import Settings
 if TYPE_CHECKING:
     from fastapi import FastAPI
     from opentelemetry.sdk._logs import LoggerProvider
+    from opentelemetry.sdk.resources import Resource
 
 logger = logging.getLogger(__name__)
 
 _tracer_provider: TracerProvider | None = None
 _log_provider: "LoggerProvider | None" = None
+_otel_resource: "Resource | None" = None
 
 # Global meter for creating metrics instruments across the application.
 meter = metrics.get_meter("gideon")
@@ -171,7 +173,9 @@ def setup_telemetry(settings: Settings) -> TracerProvider | None:
     Returns the TracerProvider if enabled, None otherwise.
     Idempotent: repeated calls return the cached provider.
     """
-    global _tracer_provider  # noqa: PLW0603
+    # Global state caches the OTel providers and resource for reuse across
+    # the application lifetime (idempotent initialization).
+    global _tracer_provider, _otel_resource  # noqa: PLW0603
 
     if not settings.otel.enabled:
         logger.info("OpenTelemetry disabled")
@@ -186,6 +190,7 @@ def setup_telemetry(settings: Settings) -> TracerProvider | None:
             "service.version": settings.app_version,
         }
     )
+    _otel_resource = resource
     logger.debug(
         "OTel resource created: service=%s version=%s",
         settings.otel.service_name,
@@ -251,11 +256,18 @@ def reattach_log_handler(settings: Settings) -> None:
     Called via worker_process_init signal after Celery forks a pool child.
     The fork inherits the parent's logging handler chain, but the HTTP
     connection pool inside OTLPLogExporter is invalid post-fork — the socket
-    is shared and breaks. This function removes stale OTel handlers, creates
-    a fresh LoggerProvider and exporter, and re-attaches the bridge.
+    is shared and breaks. This function shuts down the stale provider,
+    removes inherited handlers, creates a fresh LoggerProvider with
+    SimpleLogRecordProcessor (to avoid background thread deadlock post-fork),
+    and re-attaches the bridge.
 
     Safe to call multiple times (idempotent).
     """
+    # Global state is necessary for multi-process coordination: the parent process
+    # initializes OTel, then child processes call this function to re-init the log
+    # bridge (because fork invalidates the HTTP connection pool).
+    global _log_provider, _otel_resource  # noqa: PLW0603
+
     if not settings.otel.enabled or settings.otel.exporter != "otlp":
         return
 
@@ -264,32 +276,43 @@ def reattach_log_handler(settings: Settings) -> None:
         OTLPLogExporter,
     )
     from opentelemetry.sdk._logs import LoggerProvider, LoggingHandler
-    from opentelemetry.sdk._logs.export import BatchLogRecordProcessor
-    from opentelemetry.sdk.resources import Resource
+    from opentelemetry.sdk._logs.export import SimpleLogRecordProcessor
 
-    global _log_provider  # noqa: PLW0603
+    # Shut down stale provider (inherited from parent). The background thread
+    # and HTTP connection pool are in an invalid state post-fork.
+    if _log_provider is not None:
+        try:
+            _log_provider.shutdown()  # type: ignore[no-untyped-call]
+        except Exception:
+            logger.debug("Failed to shut down stale log provider", exc_info=True)
+        _log_provider = None
 
-    # Remove stale OTel handlers from root logger (inherited from parent before fork).
+    # Remove stale handlers from root logger (inherited from parent before fork).
     root_logger = logging.getLogger()
     stale_handlers = [h for h in root_logger.handlers if isinstance(h, LoggingHandler)]
     for h in stale_handlers:
         root_logger.removeHandler(h)
 
-    # Create a fresh LoggerProvider with the same resource as the parent.
-    # Use the service name from settings (already customized for worker/beat in env).
-    resource = Resource.create(
-        {
-            "service.name": settings.otel.service_name,
-            "service.version": settings.app_version,
-        }
-    )
+    # Reuse the resource from the parent setup_telemetry call for consistency.
+    resource = _otel_resource
+    if resource is None:
+        resource = Resource.create(
+            {
+                "service.name": settings.otel.service_name,
+                "service.version": settings.app_version,
+            }
+        )
 
     endpoint = f"{settings.otel.endpoint}/v1/logs"
     logger.debug("Re-attaching OTel log bridge in forked process → %s", endpoint)
 
+    # Use SimpleLogRecordProcessor in the child to avoid spawning a background
+    # thread that could deadlock (BatchLogRecordProcessor starts a daemon thread,
+    # but post-fork the thread state may be invalid). Task durations are short,
+    # so blocking on export is acceptable.
     log_provider = LoggerProvider(resource=resource)
     log_provider.add_log_record_processor(
-        BatchLogRecordProcessor(OTLPLogExporter(endpoint=endpoint))
+        SimpleLogRecordProcessor(OTLPLogExporter(endpoint=endpoint))
     )
     set_logger_provider(log_provider)
     _log_provider = log_provider
