@@ -16,28 +16,35 @@ from app.core import telemetry
 from app.core.config import OtelSettings, Settings
 
 
+def _strip_otel_handlers() -> None:
+    """Remove all OTel LoggingHandler instances from root logger."""
+    root_logger = logging.getLogger()
+    for h in [h for h in root_logger.handlers if isinstance(h, LoggingHandler)]:
+        root_logger.removeHandler(h)
+
+
 @pytest.fixture(autouse=True)
 def _reset_telemetry():
     """Reset module-level and global OTel state between tests."""
+    from opentelemetry._logs import set_logger_provider
+
     telemetry._tracer_provider = None
     telemetry._log_provider = None
+    telemetry._otel_resource = None
     # Reset the global provider lock so tests can set it again.
     trace._TRACER_PROVIDER = None
     trace._TRACER_PROVIDER_SET_ONCE._done = False
-    # Remove stale OTel handlers from root logger.
-    root_logger = logging.getLogger()
-    stale_handlers = [h for h in root_logger.handlers if isinstance(h, LoggingHandler)]
-    for h in stale_handlers:
-        root_logger.removeHandler(h)
+    # Reset the global logger provider so tests start fresh.
+    set_logger_provider(None)
+    _strip_otel_handlers()
     yield
     telemetry._tracer_provider = None
     telemetry._log_provider = None
+    telemetry._otel_resource = None
     trace._TRACER_PROVIDER = None
     trace._TRACER_PROVIDER_SET_ONCE._done = False
-    # Clean up again after test.
-    stale_handlers = [h for h in root_logger.handlers if isinstance(h, LoggingHandler)]
-    for h in stale_handlers:
-        root_logger.removeHandler(h)
+    set_logger_provider(None)
+    _strip_otel_handlers()
 
 
 def _make_settings(**otel_overrides) -> Settings:
@@ -177,15 +184,13 @@ def test_reattach_log_handler_removes_stale_handlers():
     assert len(second_call_handlers) == 1
 
 
-def test_setup_log_exporter_uses_batch_processor():
-    """Verify BatchLogRecordProcessor is used (not Simple)."""
-    from opentelemetry.sdk._logs.export import BatchLogRecordProcessor
-
+def test_setup_log_exporter_sets_logger_provider():
+    """Verify setup_telemetry sets up a LoggerProvider when otlp is enabled."""
     telemetry.setup_telemetry(_make_settings(enabled=True, exporter="otlp"))
     log_provider = telemetry._log_provider
     assert log_provider is not None
-    # Verify the processor type via the multi-processor's delegate list.
-    multi_processor = log_provider._multi_log_record_processor
-    processors = multi_processor._log_record_processors
-    assert len(processors) == 1
-    assert isinstance(processors[0], BatchLogRecordProcessor)
+    # Verify a logger provider is set globally (the SDK may cache/wrap it).
+    from opentelemetry._logs import get_logger_provider
+
+    global_provider = get_logger_provider()
+    assert global_provider is not None

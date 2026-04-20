@@ -55,7 +55,7 @@ def _on_beat_init(**_kwargs: object) -> None:
     _init_otel()
 
 
-@worker_process_init.connect  # type: ignore[untyped-decorator]
+@worker_process_init.connect(dispatch_uid="gideon.otel.reattach_log_handler")  # type: ignore[untyped-decorator]
 def _on_worker_process_init(**_kwargs: object) -> None:
     """Re-attach OTel log bridge in forked worker processes.
 
@@ -63,6 +63,9 @@ def _on_worker_process_init(**_kwargs: object) -> None:
     creates it. The fork inherits the parent's logging handlers but the
     HTTP connection pool is stale. This re-creates the log bridge fresh.
     """
+    if not settings.otel.enabled:
+        return
+
     from app.core.telemetry import reattach_log_handler
 
     reattach_log_handler(settings)
