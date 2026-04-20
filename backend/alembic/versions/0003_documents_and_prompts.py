@@ -18,6 +18,7 @@ branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
 _NOW = sa.text("now()")
+_FALSE = sa.text("false")
 
 
 def upgrade() -> None:
@@ -65,7 +66,7 @@ def upgrade() -> None:
             "legal_hold",
             sa.Boolean(),
             nullable=False,
-            server_default=sa.text("false"),
+            server_default=_FALSE,
         ),
         sa.Column("uploaded_by", sa.Uuid(), nullable=False),
         sa.Column(
