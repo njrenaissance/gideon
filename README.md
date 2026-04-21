@@ -2,15 +2,37 @@
 
 **Open source criminal defense discovery platform.**
 
-A free, fully self-hostable, AI-powered discovery
-platform for solo and small criminal defense
-practitioners. Runs entirely on-premise with no
-third-party LLM API calls, protecting client
+A free, fully self-hostable, AI-powered discovery platform for
+solo and small criminal defense practitioners. Runs entirely
+on-premise with no third-party LLM API calls, protecting client
 confidentiality under ABA Rules 1.6 and 1.1.
 
-Named after *Gideon v. Wainwright* (1963) — the Supreme
-Court decision establishing the right to counsel for
-criminal defendants who cannot afford an attorney.
+## Mission
+
+Named after *Gideon v. Wainwright* (1963) — the Supreme Court
+decision establishing the constitutional right to effective
+counsel for criminal defendants who cannot afford an attorney.
+
+The principle is simple: **a defendant's right to counsel is
+meaningless without the tools to mount an effective defense.**
+
+Large law firms have access to enterprise eDiscovery platforms
+(Relativity, Concordance, etc.). Solo practitioners and small
+criminal defense firms do not. This creates a two-tier system
+where a defendant's access to quality discovery analysis depends
+on their attorney's budget — not the strength of their case.
+
+Gideon exists to level that playing field. It's built on two
+commitments:
+
+1. **Data stays on-premise** — Client confidentiality is
+   non-negotiable. No third-party APIs, no cloud ingestion,
+   no telemetry. Your discovery materials never leave your
+   infrastructure.
+
+2. **Free and open source** — No licensing fees, no vendor
+   lock-in, no proprietary black boxes. You own your data and
+   your tools.
 
 ## Release Naming Convention
 
@@ -19,19 +41,6 @@ Major releases are named after famous jurists:
 | Version | Codename | Jurist |
 | --- | --- | --- |
 | v1 | Ginsburg | Ruth Bader Ginsburg |
-
-## Why Gideon?
-
-Solo and small-firm criminal defense attorneys face
-massive government discovery productions without access
-to the enterprise eDiscovery tooling available to large
-firms. Gideon levels the playing field with:
-
-- **Semantic search** across entire discovery productions
-- **AI-powered Q&A** with citations to source documents
-- **Brady/Giglio tracking** with CPL 245 deadline clocks
-- **Complete privacy** — no data ever leaves your
-  infrastructure
 
 ## Key Features (MVP)
 
@@ -51,7 +60,7 @@ firms. Gideon levels the playing field with:
 
 ## Technology Stack
 
-Eight Docker Compose services running on commodity
+Eleven Docker Compose services running on commodity
 hardware:
 
 - **Next.js** — UI and session management
@@ -61,7 +70,8 @@ hardware:
 - **PostgreSQL** — relational data store
 - **Qdrant** — permission-filtered vector search
 - **Redis** — task queue broker
-- **Celery + Beat** — background workers
+- **Celery + Beat + Flower** — background workers and monitoring
+- **Grafana LGTM** — local observability (traces, metrics, logs)
 
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for
 full details.
@@ -116,20 +126,16 @@ uv run python scripts/upload_file.py --file ./evidence.pdf
 
 | Script | Purpose |
 | --- | --- |
-| `seed_demo.py` | Create demo users (Virginia Cora, Jonathan Phillips), two matters, and access grants via the API. Idempotent. |
+| `seed_demo.py` | Create demo users, two matters, and access grants via the API. Idempotent. |
 | `submit_task.py` | Submit a ping task and a 30-second sleep task via the API; poll until completion. |
 | `upload_file.py` | Upload a file (or auto-generated test file) to the first matter, then verify the DB record, S3 object, and download round-trip. |
 
 ## Privacy & Security
 
-- All data stays on your infrastructure — no exceptions
-- No third-party LLM API calls — enforced at
-  configuration level
-- No model training on client data
-- No telemetry
-- MFA enforced for all users
-- Encryption at rest and in transit
-- Immutable hash-chained audit log
+All data stays on your infrastructure — no third-party LLM APIs,
+no telemetry, no model training on client data. Full details in
+[SECURITY.md](SECURITY.md) and [CONTRIBUTING.md](CONTRIBUTING.md)
+(Non-Negotiable Rules section).
 
 ## Target Users
 

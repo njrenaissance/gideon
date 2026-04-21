@@ -28,8 +28,82 @@ Gideon welcomes contributors of all kinds:
 
 ## Development Setup
 
-*Coming soon — Docker Compose development environment
-instructions.*
+### Prerequisites
+
+- **Docker** + Docker Compose (v2+)
+  - **Windows**: Use [Docker Desktop](https://www.docker.com/products/docker-desktop/)
+    (includes Docker and Docker Compose)
+- **Git**
+- **Python 3.12+** with `uv` (for running tests/scripts outside Docker)
+
+### Setup Steps
+
+1. Clone the repository and navigate to the root:
+
+   ```bash
+   git clone https://github.com/gideon-dev/gideon.git
+   cd gideon
+   ```
+
+2. Copy the example environment file and edit secrets:
+
+   ```bash
+   cp .env.example .env
+   # Edit .env — replace every CHANGE_ME value with your own
+   ```
+
+3. Create persistent external Docker volumes (one-time setup):
+
+   ```bash
+   docker volume create gideon-postgres-data
+   docker volume create gideon-qdrant-data
+   docker volume create gideon-ollama-models
+   ```
+
+4. Start all services:
+
+   ```bash
+   docker compose -f infrastructure/docker-compose.yml --env-file .env up -d
+   ```
+
+   ⚠️ **First run** — Ollama downloads and caches LLM models (~5–10 GB).
+   This takes 5–10 minutes depending on your internet connection.
+   Check progress with `docker compose logs ollama` or wait for the
+   `gideon-ollama-1` container to report `Listening on 127.0.0.1:11434`.
+
+### Running Tests (Backend)
+
+From the repo root:
+
+```bash
+# Format code with ruff
+uv run ruff format backend/
+
+# Lint with ruff
+uv run ruff check backend/
+
+# Run BDD tests with pytest-bdd
+# (requires dev stack to be running)
+uv run pytest backend/tests/
+```
+
+For faster iteration, you can run a single test:
+
+```bash
+uv run pytest backend/tests/features/ingestion/
+```
+
+### Stopping the Dev Stack
+
+```bash
+docker compose -f infrastructure/docker-compose.yml down
+```
+
+To also remove volumes (careful — deletes data):
+
+```bash
+docker compose -f infrastructure/docker-compose.yml down -v
+```
 
 ## Code Standards
 
@@ -66,8 +140,8 @@ instructions.*
 ## Security
 
 If you discover a security vulnerability, **do not open
-a public issue.** Instead, email the maintainers
-directly. Details in SECURITY.md (coming soon).
+a public issue.** Instead, see [SECURITY.md](SECURITY.md)
+for responsible disclosure instructions.
 
 Given the sensitivity of the data Gideon handles
 (criminal defense discovery materials), security review
@@ -79,13 +153,13 @@ These cannot be relaxed by any contribution:
 
 1. No third-party LLM API calls
 2. No model training on client data
-3. No telemetry
-4. `build_qdrant_filter()` on every vector query
+3. No external telemetry — keep all observability
+   (traces, metrics, logs) on-premise
+4. All vector queries must be limited to matter scope
+   (enforced via `build_qdrant_filter()`)
 5. Legal hold = immutable documents
 6. SHA-256 hash on every ingested document
 7. Immutable hash-chained audit log
-8. MFA enforced for all users
-9. Encryption at rest and in transit
 
 ## Code of Conduct
 

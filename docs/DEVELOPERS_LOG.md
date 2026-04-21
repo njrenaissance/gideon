@@ -10,8 +10,7 @@ from the commit history. New entries are added by hand as work progresses.
 *~3 hours (21:32–00:42)*
 
 Started Gideon from scratch. The goal: a free, self-hostable, AI-powered
-discovery platform for solo and small criminal defense practitioners — built
-first for Virginia Cora at Cora Firm in New York.
+discovery platform for solo and small criminal defense practitioners.
 
 Spent the first session laying out the architecture and writing the initial
 specs before touching any code. Wrote an architecture document with a Mermaid
@@ -245,9 +244,9 @@ fields are excluded from responses, and access-denied returns 404 (not 403)
 to avoid leaking resource existence.
 
 **Demo seed:** Created a seed script with deterministic UUIDs (idempotent,
-safe to rerun) populating Cora Firm with two users, two matters, and
-differentiated access grants — Virginia (attorney) has access to both matters,
-Jonathan (paralegal) only to one.
+safe to rerun) populating a firm with two users, two matters, and
+differentiated access grants — one user (attorney) has access to both matters,
+one user (paralegal) only to one.
 
 **CI hardening:** Added `mypy --strict` to pre-commit hooks, aligned
 pre-commit with GitHub Actions across all three packages, and moved the

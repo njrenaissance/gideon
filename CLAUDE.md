@@ -13,8 +13,8 @@ the Supreme Court decision establishing the right to
 counsel for criminal defendants who cannot afford an
 attorney.
 
-Primary design partner: **Virginia Cora, Cora Firm**
-(solo criminal defense, New York).
+Designed in collaboration with solo criminal defense
+practitioners from New York.
 
 License: **Apache 2.0**
 
@@ -101,20 +101,21 @@ not a separate service.
    configuration level. Ollama only.
 2. **No model training on client data.** Zero retention
    for LLM inference.
-3. **No telemetry.**
-4. **`build_qdrant_filter()` is called on every vector
-   query without exception.** It is never bypassed and
-   never accepts client-supplied filter parameters. This
-   is the most security-critical function in the
-   codebase.
+3. **No external telemetry.** All observability (traces,
+   metrics, logs) stays on-premise; no data sent to
+   third-party services.
+4. **All vector queries must be limited to matter scope,
+   enforced via `build_qdrant_filter()`.** This function
+   is called on every query without exception. It is never
+   bypassed and never accepts client-supplied filter
+   parameters. This is the most security-critical function
+   in the codebase.
 5. **Legal hold = immutable.** Documents under legal hold
    cannot be deleted or modified.
 6. **SHA-256 hash on every ingested document** for
    deduplication and integrity.
 7. **Immutable hash-chained audit log** for all LLM
    queries, document access, and permission changes.
-8. **MFA enforced** for all users from day one.
-9. **Encryption at rest and in transit.**
 
 ---
 
