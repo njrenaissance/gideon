@@ -2,8 +2,8 @@
 """Seed demo data via the API — firm, users, matters, access grants.
 
 Creates:
-    - User A (attorney): Virginia Cora — access to Matter A and Matter B
-    - User B (paralegal): Jonathan Phillips — access to Matter B only
+    - User A (attorney): demo attorney — access to Matter A and Matter B
+    - User B (paralegal): demo paralegal — access to Matter B only
     - Matter A: People v. Smith
     - Matter B: People v. Jones
 

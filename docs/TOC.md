@@ -39,7 +39,7 @@ BDD scenarios.*
 
 ### History
 
-- [Development Journal](HISTORY.md) — running log of the development
+- [Development Journal](DEVELOPERS_LOG.md) — running log of the development
   process, decisions, and lessons learned
 
 ### Legal Framework
