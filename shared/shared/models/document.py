@@ -5,6 +5,7 @@ from uuid import UUID
 
 from pydantic import BaseModel
 
+from shared.models.base import ListResponse
 from shared.models.enums import Classification, DocumentSource, IngestionStatus
 
 # ---------------------------------------------------------------------------
@@ -37,13 +38,7 @@ class DocumentResponse(DocumentSummary):
     updated_at: datetime
 
 
-class DocumentListResponse(BaseModel):
-    """Paginated document listing."""
-
-    items: list[DocumentSummary]
-    total: int
-    offset: int
-    limit: int
+DocumentListResponse = ListResponse[DocumentSummary]
 
 
 class ReIngestResponse(BaseModel):
