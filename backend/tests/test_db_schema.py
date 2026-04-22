@@ -113,6 +113,7 @@ async def test_user_middle_initial_round_trip(firm, session):
     session.add(u)
     await session.flush()
     result = await session.get(User, u.id)
+    assert result is not None, "User was not persisted"
     assert result.middle_initial == "B"
 
 
