@@ -11,13 +11,14 @@ from shared.models.auth import (
     RefreshRequest,
     TokenResponse,
 )
-from shared.models.base import MessageResponse
+from shared.models.base import ListResponse, MessageResponse
 from shared.models.chat import (
     ChatQueryResponse,
     ChatSessionResponse,
     SubmitQueryRequest,
 )
 from shared.models.document import (
+    DocumentListResponse,
     DocumentResponse,
     DocumentSummary,
 )
@@ -62,12 +63,14 @@ __all__ = [
     "ChatSessionResponse",
     "SubmitQueryRequest",
     "CreateUserRequest",
+    "DocumentListResponse",
     "DocumentResponse",
     "DocumentSource",
     "DocumentSummary",
     "FirmResponse",
     "GrantAccessRequest",
     "HealthResponse",
+    "ListResponse",
     "LoginRequest",
     "LogoutRequest",
     "MatterAccessResponse",
