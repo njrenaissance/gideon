@@ -1,3 +1,10 @@
+# Production-ready compose: FastAPI, Celery, and related services using pre-built image.
+#
+# Image source: ghcr.io/njrenaissance/gideon/backend (built by GitHub Actions workflow)
+# Build workflow: .github/workflows/build-backend.yml (run with workflow_dispatch)
+#
+# For local development with local builds, use docker-compose.local-build.yml instead.
+#
 # Load environment from project root:
 #   docker compose -f infrastructure/docker-compose.yml --env-file .env up
 
@@ -30,9 +37,7 @@ services:
   # Runs `alembic upgrade head` then exits. Admin seeding has moved
   # to the FastAPI lifespan hook (GIDEON_ADMIN_* env vars).
   db-migrate:
-    build:
-      context: ..
-      dockerfile: backend/docker/Dockerfile
+    image: ghcr.io/njrenaissance/gideon/backend:latest
     command: ["true"]
     environment:
       - GIDEON_DB_URL=postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
@@ -51,9 +56,7 @@ services:
 
   # --- API Layer --------------------------------------------
   fastapi:
-    build:
-      context: ..
-      dockerfile: backend/docker/Dockerfile
+    image: ghcr.io/njrenaissance/gideon/backend:latest
     expose:
       - "8000"
     # Host port mapping for local development and integration tests.
@@ -349,9 +352,7 @@ services:
 
   # --- Background Workers -----------------------------------
   celery-worker:
-    build:
-      context: ..
-      dockerfile: backend/docker/Dockerfile
+    image: ghcr.io/njrenaissance/gideon/backend:latest
     command: celery -A app.workers worker -l info
     environment:
       - SKIP_MIGRATIONS=true
@@ -410,9 +411,7 @@ services:
     restart: unless-stopped
 
   celery-beat:
-    build:
-      context: ..
-      dockerfile: backend/docker/Dockerfile
+    image: ghcr.io/njrenaissance/gideon/backend:latest
     command: celery -A app.workers beat -l info --schedule /tmp/celery/celerybeat-schedule
     environment:
       - SKIP_MIGRATIONS=true
@@ -446,11 +445,7 @@ services:
 
   # --- Monitoring --------------------------------------------
   flower:
-    build:
-      context: ..
-      dockerfile: backend/docker/Dockerfile
-      args:
-        INSTALL_EXTRAS: monitoring
+    image: ghcr.io/njrenaissance/gideon/backend:latest
     command: celery -A app.workers flower --port=5555 --url_prefix=/flower --broker_api=redis://redis:6379/0
     ports:
       - "${GIDEON_FLOWER_PORT:-5555}:5555"

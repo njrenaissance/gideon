@@ -76,3 +76,22 @@ services:
   # grafana (otel-lgtm) runs with defaults from docker-compose.yml — do NOT disable it.
   flower:
     profiles: [disabled]
+
+volumes:
+  # Override base compose: use ephemeral volumes for data services (clean slate per test run)
+  postgres-data:
+    # Remove external: true — creates a new volume per compose up, destroyed on compose down -v
+  qdrant-data:
+    # Remove external: true — creates a new volume per compose up, destroyed on compose down -v
+  minio-data:
+    # minio-data is already ephemeral in base compose; ensure it stays that way
+  redis-data:
+    # redis-data is already ephemeral in base compose
+  ollama-models:
+    # Keep ollama-models as external so model pulls are cached across test runs
+    external: true
+    name: gideon-ollama-models
+  celery-tmp:
+    # Already ephemeral
+  grafana-data:
+    # Already ephemeral

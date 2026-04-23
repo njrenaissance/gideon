@@ -1,0 +1,42 @@
+# Local development compose: builds backend image from source instead of using pre-built.
+#
+# Use this compose file if you don't have access to the pre-built GHCR image
+# or want to test local code changes.
+#
+# Usage:
+#   docker compose -f infrastructure/docker-compose.yml -f infrastructure/docker-compose.local-build.yml --env-file .env up
+#
+# This will override the `image:` settings in docker-compose.yml with local builds.
+
+services:
+  db-migrate:
+    build:
+      context: ..
+      dockerfile: backend/docker/Dockerfile
+    image: null  # Override the image setting to enable local build
+
+  fastapi:
+    build:
+      context: ..
+      dockerfile: backend/docker/Dockerfile
+    image: null  # Override the image setting to enable local build
+
+  celery-worker:
+    build:
+      context: ..
+      dockerfile: backend/docker/Dockerfile
+    image: null  # Override the image setting to enable local build
+
+  celery-beat:
+    build:
+      context: ..
+      dockerfile: backend/docker/Dockerfile
+    image: null  # Override the image setting to enable local build
+
+  flower:
+    build:
+      context: ..
+      dockerfile: backend/docker/Dockerfile
+      args:
+        INSTALL_EXTRAS: monitoring
+    image: null  # Override the image setting to enable local build
