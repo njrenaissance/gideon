@@ -37,20 +37,35 @@ GIDEON_DEBUG="true"
 GIDEON_LOG_LEVEL="DEBUG"
 ```
 
-## Start Services with Persistent Volumes
+## Start Services
 
-Create persistent volumes for data durability:
-
-```bash
-docker volume create gideon-postgres-data
-docker volume create gideon-qdrant-data
-docker volume create gideon-ollama-models
-```
-
-Then start the stack:
+Start the stack:
 
 ```bash
 docker compose -f infrastructure/docker-compose.yml --env-file .env up -d
+```
+
+Docker Compose automatically creates the named volumes defined in the
+compose file:
+
+- `gideon-postgres-data` — PostgreSQL data
+- `gideon-qdrant-data` — Qdrant vector embeddings
+- `gideon-ollama-models` — Ollama LLM model cache
+- `minio-data` — MinIO S3 documents and extracted text
+
+These volumes **persist across restarts** until you explicitly delete them.
+To preserve data when stopping the stack:
+
+```bash
+docker compose -f infrastructure/docker-compose.yml down
+# Data remains in volumes; next 'up -d' reuses it
+```
+
+To remove all data:
+
+```bash
+docker compose -f infrastructure/docker-compose.yml down -v
+# Volumes are deleted; next 'up -d' starts fresh
 ```
 
 > **Note on exposed ports:** The exposed ports in this configuration (MinIO
