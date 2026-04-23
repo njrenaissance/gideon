@@ -55,19 +55,6 @@ dependencies = [
     "opentelemetry-exporter-otlp-proto-http>=1.29",
 ]
 
-[project.optional-dependencies]
-monitoring = ["flower>=2.0"]
-dev = ["ruff>=0.9", "mypy>=1.14", "types-python-jose>=3.3", "pre-commit>=4.1"]
-test = [
-    "pytest>=8.3",
-    "pytest-bdd>=8.1",
-    "pytest-asyncio>=0.25",
-    "pytest-cov>=6.0",
-    "httpx>=0.28",
-    "factory-boy>=3.3",
-    "python-dotenv>=1.0",
-]
-
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
@@ -100,6 +87,7 @@ dev = [
     "pytest-playwright>=0.7.2",
     "python-dotenv>=1.0",
     "psycopg2-binary>=2.9",
+    "flower>=2.0",
 ]
 
 [tool.uv.sources]
