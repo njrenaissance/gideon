@@ -5,19 +5,19 @@ Reads configuration from environment variables (preferred in Docker)
 or CLI arguments (for manual use):
 
     # Via environment (Docker Compose):
-    GIDEON_ADMIN_EMAIL=admin@corafirm.com
+    GIDEON_ADMIN_EMAIL=admin@example.com
     GIDEON_ADMIN_PASSWORD=S3cure!Pass
-    GIDEON_ADMIN_FIRST_NAME=Virginia
-    GIDEON_ADMIN_LAST_NAME=Cora
-    GIDEON_ADMIN_FIRM_NAME="Cora Firm"
+    GIDEON_ADMIN_FIRST_NAME=John
+    GIDEON_ADMIN_LAST_NAME=Smith
+    GIDEON_ADMIN_FIRM_NAME="Example Law Firm"
 
     # Via CLI:
     python -m scripts.create_admin \\
-        --email admin@corafirm.com \\
+        --email admin@example.com \\
         --password 'S3cure!Pass' \\
-        --first-name Virginia \\
-        --last-name Cora \\
-        --firm-name 'Cora Firm'
+        --first-name John \\
+        --last-name Smith \\
+        --firm-name 'Example Law Firm'
 
 Idempotent — safe to run on every container startup.
 Requires GIDEON_DB_URL to be set (or .env to be present).
