@@ -12,9 +12,10 @@ dependencies = [
     "httpx>=0.28",
 ]
 
-[project.optional-dependencies]
-dev = ["ruff>=0.9", "mypy>=1.14"]
-test = [
+[dependency-groups]
+dev = [
+    "ruff>=0.9",
+    "mypy>=1.14",
     "pytest>=8.3",
     "pytest-cov>=6.0",
 ]

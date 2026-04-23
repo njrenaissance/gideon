@@ -1040,29 +1040,10 @@ dependencies = [
     { name = "uvicorn", extra = ["standard"] },
 ]
 
-[package.optional-dependencies]
-dev = [
-    { name = "mypy" },
-    { name = "pre-commit" },
-    { name = "ruff" },
-    { name = "types-python-jose" },
-]
-monitoring = [
-    { name = "flower" },
-]
-test = [
-    { name = "factory-boy" },
-    { name = "httpx" },
-    { name = "pytest" },
-    { name = "pytest-asyncio" },
-    { name = "pytest-bdd" },
-    { name = "pytest-cov" },
-    { name = "python-dotenv" },
-]
-
 [package.dev-dependencies]
 dev = [
     { name = "factory-boy" },
+    { name = "flower" },
     { name = "hatch" },
     { name = "httpx" },
     { name = "mypy" },
@@ -1085,17 +1066,13 @@ requires-dist = [
     { name = "asyncpg", specifier = ">=0.30" },
     { name = "celery", extras = ["redis"], specifier = ">=5.4" },
     { name = "cryptography", specifier = ">=44" },
-    { name = "factory-boy", marker = "extra == 'test'", specifier = ">=3.3" },
     { name = "fastapi", specifier = ">=0.115" },
-    { name = "flower", marker = "extra == 'monitoring'", specifier = ">=2.0" },
     { name = "gideon-shared", editable = "shared" },
-    { name = "httpx", marker = "extra == 'test'", specifier = ">=0.28" },
     { name = "langchain", specifier = ">=0.3" },
     { name = "langchain-community", specifier = ">=0.3" },
     { name = "langchain-ollama", specifier = ">=0.3" },
     { name = "langchain-text-splitters", specifier = ">=0.3" },
     { name = "minio", specifier = ">=7.0" },
-    { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.14" },
     { name = "opentelemetry-api", specifier = ">=1.29" },
     { name = "opentelemetry-exporter-otlp-proto-http", specifier = ">=1.29" },
     { name = "opentelemetry-instrumentation-celery", specifier = ">=0.50b0" },
@@ -1103,29 +1080,21 @@ requires-dist = [
     { name = "opentelemetry-instrumentation-sqlalchemy", specifier = ">=0.50b0" },
     { name = "opentelemetry-sdk", specifier = ">=1.29" },
     { name = "passlib", extras = ["bcrypt"], specifier = ">=1.7" },
-    { name = "pre-commit", marker = "extra == 'dev'", specifier = ">=4.1" },
     { name = "psycopg2-binary", specifier = ">=2.9" },
     { name = "pydantic", extras = ["email"], specifier = ">=2.10" },
     { name = "pydantic-settings", specifier = ">=2.7" },
     { name = "pyotp", specifier = ">=2.9" },
-    { name = "pytest", marker = "extra == 'test'", specifier = ">=8.3" },
-    { name = "pytest-asyncio", marker = "extra == 'test'", specifier = ">=0.25" },
-    { name = "pytest-bdd", marker = "extra == 'test'", specifier = ">=8.1" },
-    { name = "pytest-cov", marker = "extra == 'test'", specifier = ">=6.0" },
-    { name = "python-dotenv", marker = "extra == 'test'", specifier = ">=1.0" },
     { name = "python-jose", extras = ["cryptography"], specifier = ">=3.3" },
     { name = "python-multipart", specifier = ">=0.0.18" },
     { name = "qdrant-client", specifier = ">=1.13" },
-    { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.9" },
     { name = "sqlalchemy", specifier = ">=2.0" },
-    { name = "types-python-jose", marker = "extra == 'dev'", specifier = ">=3.3" },
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.34" },
 ]
-provides-extras = ["dev", "monitoring", "test"]
 
 [package.metadata.requires-dev]
 dev = [
     { name = "factory-boy", specifier = ">=3.3" },
+    { name = "flower", specifier = ">=2.0" },
     { name = "hatch", specifier = ">=1.16.5" },
     { name = "httpx", specifier = ">=0.28" },
     { name = "mypy", specifier = ">=1.14" },
@@ -1153,29 +1122,30 @@ dependencies = [
     { name = "typer" },
 ]
 
-[package.optional-dependencies]
+[package.dev-dependencies]
 dev = [
     { name = "mypy" },
-    { name = "ruff" },
-]
-test = [
     { name = "pytest" },
     { name = "pytest-cov" },
+    { name = "ruff" },
 ]
 
 [package.metadata]
 requires-dist = [
     { name = "gideon-sdk", editable = "sdk" },
     { name = "gideon-shared", editable = "shared" },
-    { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.14" },
-    { name = "pytest", marker = "extra == 'test'", specifier = ">=8.3" },
-    { name = "pytest-cov", marker = "extra == 'test'", specifier = ">=6.0" },
     { name = "rich", specifier = ">=13.0" },
-    { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.9" },
     { name = "tomli-w", specifier = ">=1.0" },
     { name = "typer", specifier = ">=0.15" },
 ]
-provides-extras = ["dev", "test"]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "mypy", specifier = ">=1.14" },
+    { name = "pytest", specifier = ">=8.3" },
+    { name = "pytest-cov", specifier = ">=6.0" },
+    { name = "ruff", specifier = ">=0.9" },
+]
 
 [[package]]
 name = "gideon-sdk"
@@ -1185,26 +1155,27 @@ dependencies = [
     { name = "httpx" },
 ]
 
-[package.optional-dependencies]
+[package.dev-dependencies]
 dev = [
     { name = "mypy" },
-    { name = "ruff" },
-]
-test = [
     { name = "pytest" },
     { name = "pytest-cov" },
+    { name = "ruff" },
 ]
 
 [package.metadata]
 requires-dist = [
     { name = "gideon-shared", editable = "shared" },
     { name = "httpx", specifier = ">=0.28" },
-    { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.14" },
-    { name = "pytest", marker = "extra == 'test'", specifier = ">=8.3" },
-    { name = "pytest-cov", marker = "extra == 'test'", specifier = ">=6.0" },
-    { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.9" },
 ]
-provides-extras = ["dev", "test"]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "mypy", specifier = ">=1.14" },
+    { name = "pytest", specifier = ">=8.3" },
+    { name = "pytest-cov", specifier = ">=6.0" },
+    { name = "ruff", specifier = ">=0.9" },
+]
 
 [[package]]
 name = "gideon-shared"
@@ -1213,8 +1184,24 @@ dependencies = [
     { name = "pydantic", extra = ["email"] },
 ]
 
+[package.dev-dependencies]
+dev = [
+    { name = "mypy" },
+    { name = "pytest" },
+    { name = "pytest-cov" },
+    { name = "ruff" },
+]
+
 [package.metadata]
 requires-dist = [{ name = "pydantic", extras = ["email"], specifier = ">=2.10" }]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "mypy", specifier = ">=1.14" },
+    { name = "pytest", specifier = ">=8.3" },
+    { name = "pytest-cov", specifier = ">=6.0" },
+    { name = "ruff", specifier = ">=0.9" },
+]
 
 [[package]]
 name = "googleapis-common-protos"
