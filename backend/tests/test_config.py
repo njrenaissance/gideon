@@ -38,7 +38,7 @@ _ENV_TEST = dotenv_values(Path(__file__).parent.parent / ".env.test")
 
 DEFAULTS = {
     "app_name": "Gideon",
-    "app_version": version("gideon"),
+    "app_version": version("gideon-backend"),
     "debug": False,
     "log_level": "INFO",
     "log_output": "stdout",

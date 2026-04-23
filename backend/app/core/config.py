@@ -530,7 +530,7 @@ class Settings(BaseSettings):
     """
 
     app_name: str = "Gideon"
-    app_version: str = version("gideon")
+    app_version: str = version("gideon-backend")
     debug: bool = False
     log_level: Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] = "INFO"
     log_output: Literal["stdout", "stderr"] = "stdout"
