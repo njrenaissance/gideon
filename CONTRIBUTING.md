@@ -20,14 +20,6 @@ Gideon welcomes contributors of all kinds:
 
 ## Getting Started
 
-1. Fork the repository
-2. Create a feature branch from `main`
-3. Make your changes
-4. Run linting and tests (see below)
-5. Submit a pull request
-
-## Development Setup
-
 The repository contains multiple projects: `backend/` (FastAPI), `frontend/`
 (Next.js), `shared/` (shared utilities), `sdk/` (Python SDK), and `cli/`
 (command-line interface).
@@ -35,11 +27,11 @@ The repository contains multiple projects: `backend/` (FastAPI), `frontend/`
 ### Prerequisites
 
 - **Git**
-- **Python 3.12+** with `uv` (for unit tests and linting)
+- **Python 3.13** with `uv` (for unit tests and linting)
 - **Docker** (optional, required only for integration tests)
   - **Windows**: Use [Docker Desktop](https://www.docker.com/products/docker-desktop/)
 
-### Quick Start
+### Development Setup
 
 1. Clone the repository:
 
@@ -48,7 +40,7 @@ The repository contains multiple projects: `backend/` (FastAPI), `frontend/`
    cd gideon
    ```
 
-2. Install Python 3.12 with uv:
+2. Install Python 3.13 with uv:
 
    ```bash
    uv python install 3.13
@@ -76,12 +68,18 @@ The repository contains multiple projects: `backend/` (FastAPI), `frontend/`
 
 ### Integration Tests (Optional)
 
-Integration tests require Docker and the backend image to be built locally.
+Integration tests require Docker and the backend image.
 
-1. Build the backend Docker image:
+1. Pull the latest Docker image for the application:
 
    ```bash
-   docker build -f infrastructure/Dockerfile.backend -t gideon-backend:dev .
+   docker pull ghcr.io/njrenaissance/gideon/backend:latest
+   ```
+
+   Alternativley, you can build it locally:
+
+   ```bash
+   docker build -f backend/docker/Dockerfile -t ghcr.io/njrenaissance/gideon/backend:latest .
    ```
 
 2. Run integration tests:
@@ -100,6 +98,15 @@ Integration tests require Docker and the backend image to be built locally.
 
 For a persistent local environment (non-development), see
 [LOCAL_DEPLOYMENT.md](docs/LOCAL_DEPLOYMENT.md).
+
+## Contribution Workflow
+
+Once your development environment is set up:
+
+1. Create a feature branch from `main` (see [Branch Naming](#branch-naming) below)
+2. Make your changes in focused, logical commits (see [Commit Size](#commit-size))
+3. Run linting and tests (see [Development Setup](#development-setup) above)
+4. Push your branch and submit a pull request to `main`
 
 ## Git Workflow
 
