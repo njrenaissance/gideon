@@ -92,7 +92,7 @@ Integration tests require Docker and the backend image to be built locally.
    ```
 
 For a persistent local environment (non-development), see
-[LOCAL_DEPLOYMENT.md](../LOCAL_DEPLOYMENT.md).
+[LOCAL_DEPLOYMENT.md](docs/LOCAL_DEPLOYMENT.md).
 
 ## Git Workflow
 
@@ -174,4 +174,4 @@ See [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) for the full Code of Conduct.
 ## License
 
 By contributing, you agree that your contributions will be licensed under the
-Apache 2.0 license. See [LICENSING.md](LICENSING.md) for details.
+Apache 2.0 license. See [LICENSING.md](docs/LICENSING.md) for details.
