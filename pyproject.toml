@@ -9,3 +9,24 @@ pattern = "version = \"(?P<version>[^\"]+)\""
 
 [tool.uv.workspace]
 members = ["backend", "shared", "sdk", "cli"]
+
+[dependency-groups]
+dev = [
+    # Linting & formatting
+    "ruff>=0.9",
+    "mypy>=1.14",
+    "types-python-jose>=3.3",
+    "pre-commit>=4.1",
+    # Testing (backend)
+    "pytest>=8.3",
+    "pytest-bdd>=8.1",
+    "pytest-asyncio>=0.25",
+    "pytest-cov>=6.0",
+    "pytest-docker>=3.1",
+    "pytest-playwright>=0.7.2",
+    "httpx>=0.28",
+    "factory-boy>=3.3",
+    "python-dotenv>=1.0",
+    # Build
+    "hatch>=1.16.5",
+]

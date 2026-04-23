@@ -51,7 +51,7 @@ The repository contains multiple projects: `backend/` (FastAPI), `frontend/`
 2. Install Python 3.12 with uv:
 
    ```bash
-   uv python install 3.12
+   uv python install 3.13
    ```
 
 3. Sync Python dependencies (creates `.venv/` with all dependency groups):
@@ -60,17 +60,18 @@ The repository contains multiple projects: `backend/` (FastAPI), `frontend/`
    uv sync --all-groups
    ```
 
-4. Run unit tests and linting:
+4. For each project, run unit tests and linting:
 
    ```bash
    # Format code with ruff
-   uv run ruff format backend/
+   uv run ruff format backend/  # other projects are cli, shared, and sdk
 
    # Lint with ruff
    uv run ruff check backend/
 
    # Run unit tests
-   uv run pytest backend/tests/
+   cd backend
+   uv run pytest tests -m "not integration"
    ```
 
 ### Integration Tests (Optional)
