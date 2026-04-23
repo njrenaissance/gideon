@@ -19,9 +19,9 @@ logger = logging.getLogger(__name__)
 class OtelSettings(BaseSettings):
     """OpenTelemetry sub-config (GIDEON_OTEL_ prefix)."""
 
-    enabled: bool = True
-    exporter: Literal["console", "otlp"] = "otlp"
-    endpoint: str = "http://grafana:4318"
+    enabled: bool = False
+    exporter: Literal["console", "otlp"] = "console"
+    endpoint: str = "http://localhost:4318"
     service_name: str = "gideon-api"
     sample_rate: float = 1.0
 
