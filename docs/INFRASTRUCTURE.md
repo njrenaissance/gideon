@@ -32,21 +32,6 @@ Before starting the development stack for the first time:
    # - GIDEON_S3_SECRET_KEY
    ```
 
-2. **Create persistent external volumes** (one-time only):
-
-   ```bash
-   docker volume create gideon-postgres-data
-   docker volume create gideon-qdrant-data
-   docker volume create gideon-ollama-models
-   ```
-
-   These volumes persist across `docker compose down -v` commands:
-   - `gideon-postgres-data` — relational database (matters, documents, users,
-     audit logs)
-   - `gideon-qdrant-data` — vector embeddings (avoids reingest on restart)
-   - `gideon-ollama-models` — cached LLM/embedding models (avoids multi-GB
-     re-downloads)
-
 ---
 
 ## Running the Stack
@@ -408,10 +393,7 @@ Used as the Celery broker. Not exposed outside the Docker network.
 
 | Volume | Service | Contents |
 | --- | --- | --- |
-| `postgres-data` | postgres | Relational database — **external volume** (`gideon-postgres-data`), preserved across `down -v` |
-| `qdrant-data` | qdrant | Vector embeddings — **external volume** (`gideon-qdrant-data`), preserved across `down -v` |
 | `redis-data` | redis | Redis AOF persistence |
-| `ollama-models` | ollama | Downloaded LLM and embedding models — **external volume** (`gideon-ollama-models`), preserved across `down -v` |
 | `minio-data` | minio | Object store buckets and objects |
 | `celery-tmp` | celery-worker | Ephemeral temp files during ingestion |
 | `grafana-data` | grafana | Grafana dashboards, Tempo traces, Prometheus metrics, Loki logs |
