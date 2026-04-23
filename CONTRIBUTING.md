@@ -138,38 +138,6 @@ Track work via GitHub Issues, not TODO comments in code. When referencing
 an issue in a commit, use `fixes #123` or `relates to #123` in the commit
 message footer.
 
-## Code Standards
-
-### Python (Backend)
-
-- Python 3.12+
-- Format with `ruff format`
-- Lint with `ruff check`
-- Type hints required on all public functions
-- Tests written as BDD with `pytest-bdd` and Gherkin
-  `.feature` files
-
-### TypeScript (Frontend)
-
-- Node.js 20+
-- Format with Prettier
-- Lint with ESLint
-- Strict TypeScript (`strict: true`)
-
-### Markdown
-
-- All `.md` files must pass `markdownlint`
-- Line length limit: 80 characters (tables and code
-  blocks excluded)
-- Fenced code blocks must specify a language
-
-### Git
-
-- Conventional commits: `feat:`, `fix:`, `docs:`,
-  `test:`, `chore:`, `refactor:`
-- One logical change per commit
-- PRs target `main`
-
 ## Security
 
 If you discover a security vulnerability, **do not open
