@@ -53,6 +53,8 @@ BDD scenarios.*
   services, ports, volumes, and integration test stack
 - [Entity Relationship Diagram](ERD.md) — database schema
   (Feature 1.2 tables; updated each feature)
+- [Scripts Reference](../scripts/README.md) — operational and testing
+  scripts for deployment, data management, and RAG testing
 - [CLI Reference](../cli/README.md) — command-line tool reference
 - [SDK Reference](../sdk/README.md) — Python SDK documentation
 
