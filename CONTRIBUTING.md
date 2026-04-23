@@ -134,9 +134,14 @@ specification:
 
 ### Issue Tracking
 
-Track work via GitHub Issues, not TODO comments in code. When referencing
-an issue in a commit, use `fixes #123` or `relates to #123` in the commit
-message footer.
+Track work via GitHub Issues, not TODO comments in code. Use the provided
+issue templates when creating new issues:
+
+- [Bug Report](.github/ISSUE_TEMPLATE/bug_report.md)
+- [Feature Request](.github/ISSUE_TEMPLATE/feature_request.md)
+
+When referencing an issue in a commit, use `fixes #123` or `relates to #123`
+in the commit message footer.
 
 ## Security
 
