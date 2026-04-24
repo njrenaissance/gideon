@@ -10,7 +10,7 @@
 #   - Disables services not needed for tests (nextjs, flower)
 #   - Services started: postgres, redis, minio, minio-init, qdrant, qdrant-init, ollama, ollama-init, tika, fastapi, celery-worker, celery-beat, grafana
 #   - Uses ephemeral volumes for postgres, qdrant, minio (clean per test run)
-#   - Keeps ollama-models as external volume (models cached across tests)
+#   - Uses ollama-models-test (ephemeral per test run; models re-downloaded after teardown)
 #   - Enables OTEL tracing via http://grafana:4318
 #   - Tears down with -v so ephemeral volumes are wiped between runs
 
@@ -68,6 +68,9 @@ services:
   ollama:
     ports:
       - "11434:11434"
+    volumes:
+      # Ephemeral volume: cleaned between test runs
+      - ollama-models-test:/root/.ollama
 
   qdrant:
     ports:
@@ -97,3 +100,4 @@ volumes:
   postgres-data-test:
   qdrant-data-test:
   minio-data-test:
+  ollama-models-test:

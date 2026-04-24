@@ -58,19 +58,10 @@ docker compose -f infrastructure/docker-compose.yml --env-file .env down
 docker compose -f infrastructure/docker-compose.yml --env-file .env down -v
 ```
 
-#### Automated setup
+#### Using an anonymous Ollama volume
 
-To automate volume creation:
-
-```bash
-bash scripts/setup-volumes.sh
-docker compose -f infrastructure/docker-compose.yml --env-file .env up
-```
-
-#### Using a local (ephemeral) Ollama volume
-
-For local development or CI environments where you don't mind re-downloading
-models on each restart:
+For local development or CI environments where you want a clean Ollama state
+on each restart (models will be re-downloaded):
 
 ```bash
 cp infrastructure/docker-compose.override.yml.example \
@@ -78,8 +69,10 @@ cp infrastructure/docker-compose.override.yml.example \
 docker compose -f infrastructure/docker-compose.yml --env-file .env up
 ```
 
-This overrides the `ollama-models` volume to be local and ephemeral, deleted
-when you run `docker compose down -v`.
+This overrides `ollama-models` from the default named volume
+(`gideon-ollama-models`) to an anonymous volume, which Docker discards
+when you run `docker compose down -v`. Models will be re-downloaded on the
+next `up`.
 
 #### Enable the frontend
 
@@ -393,13 +386,20 @@ Used as the Celery broker. Not exposed outside the Docker network.
 
 | Volume | Service | Contents |
 | --- | --- | --- |
+| `postgres-data` | postgres | Relational database (named: `gideon-postgres-data`) |
+| `qdrant-data` | qdrant, qdrant-init | Vector store collection data (named: `gideon-qdrant-data`) |
+| `ollama-models` | ollama, ollama-init | LLM model weights (named: `gideon-ollama-models`) |
+| `minio-data` | minio | Object store buckets and objects (named: `gideon-minio-data`) |
 | `redis-data` | redis | Redis AOF persistence |
-| `minio-data` | minio | Object store buckets and objects |
-| `celery-tmp` | celery-worker | Ephemeral temp files during ingestion |
+| `celery-tmp` | celery-worker, celery-beat | Ephemeral temp files during ingestion |
 | `grafana-data` | grafana | Grafana dashboards, Tempo traces, Prometheus metrics, Loki logs |
 
 All volumes are named (managed by Docker). Deleting volumes wipes the
 corresponding data permanently.
+
+`postgres-data`, `qdrant-data`, `ollama-models`, and `minio-data` use explicit
+`name:` keys (`gideon-*`) for stable, predictable names on the Docker host
+independent of the Compose project name.
 
 ---
 
@@ -444,11 +444,13 @@ automatically by `pytest-docker` (configured in `backend/tests/conftest.py`).
 - `fastapi` has OTel enabled (`EXPORTER=otlp`, targeting `grafana:4318`)
 - `redis` exposes port `6379` to the host for test access
 - `celery-worker` result backend points at `gideon_tasks_test`
-- `minio` exposes ports `9000` and `9001` to the host for test access
+- `minio` uses `minio-data-test` (ephemeral test volume)
+- `ollama` uses `ollama-models-test` (ephemeral — models re-downloaded after teardown)
 - `flower` is disabled (not needed for tests)
 - `nextjs` is disabled via profiles in the base compose file
-- `qdrant` exposes port `6333` to the host for test access
+- `qdrant` uses `qdrant-data-test` (ephemeral test volume)
 - `qdrant-init` overrides collection name to `gideon_test`
+- `postgres` uses `postgres-data-test` (ephemeral test volume)
 - Active services: `postgres` + `redis` + `minio` + `qdrant` + `ollama` +
   `fastapi` + `celery-worker` + `celery-beat` + `grafana`
 

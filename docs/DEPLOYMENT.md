@@ -35,7 +35,6 @@ step.
 
 - Docker Compose 2.0+
 - `.env` file (copy from `.env.example` and fill in secrets)
-- External Docker volumes for persistent data:
 
 ### Pulling Pre-Built Images
 
@@ -113,8 +112,8 @@ docker compose -f docker-compose.yml \
 
 Integration tests use the `docker-compose.integration.yml` override, which:
 
-1. **Uses ephemeral volumes** for all services — data is wiped between test
-   runs for a clean slate
+1. **Uses ephemeral test volumes** for postgres, qdrant, minio, and ollama
+   — data is wiped between test runs for a clean slate
 2. **Enables OTEL tracing** with the OTLP exporter to Grafana (otel-lgtm)
 3. **Disables Flower** (not needed for tests)
 
@@ -130,10 +129,10 @@ pytest -m integration
 
 This will:
 
-1. Create/start all services with ephemeral volumes
+1. Create/start all services (with ephemeral test volumes)
 2. Run tests against `gideon_test` and `gideon_tasks_test` databases
 3. Tear down services with `docker compose down -v` (removes all ephemeral
-   volumes)
+   test volumes)
 
 ---
 

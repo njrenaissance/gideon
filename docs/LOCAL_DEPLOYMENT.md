@@ -59,7 +59,13 @@ docker compose -f infrastructure/docker-compose.yml --env-file .env up -d
 Docker Compose automatically creates the named volumes defined in the
 compose file:
 
-- `minio-data` — MinIO S3 documents and extracted text
+- `postgres-data` — relational database (named: `gideon-postgres-data`)
+- `qdrant-data` — vector store collection data (named: `gideon-qdrant-data`)
+- `ollama-models` — LLM model weights; persists across restarts (named: `gideon-ollama-models`)
+- `minio-data` — MinIO S3 documents and extracted text (named: `gideon-minio-data`)
+- `redis-data` — Redis AOF persistence
+- `grafana-data` — Grafana dashboards, Tempo traces, Prometheus metrics, Loki logs
+- `celery-tmp` — ephemeral scratch space for Celery workers
 
 These volumes **persist across restarts** until you explicitly delete them.
 To preserve data when stopping the stack:
