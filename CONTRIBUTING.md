@@ -55,15 +55,20 @@ The repository contains multiple projects: `backend/` (FastAPI), `frontend/`
 4. For each project, run unit tests and linting:
 
    ```bash
-   # Format code with ruff
+   # Format code with ruff (from project root)
    uv run ruff format backend/  # other projects are cli, shared, and sdk
 
-   # Lint with ruff
+   # Lint with ruff (from project root)
    uv run ruff check backend/
 
-   # Run unit tests
+   # Run unit tests (from each project directory)
    cd backend
    uv run pytest tests -m "not integration"
+   
+   cd ../cli
+   uv run pytest tests -m "not integration"
+   
+   # Also run tests for shared and sdk projects
    ```
 
 ### Integration Tests (Optional)
@@ -103,7 +108,7 @@ Integration tests require Docker and pull several service images.
 
    All other images are pulled automatically by Docker Compose during test startup.
 
-3. Run integration tests:
+3. Run integration tests (from project root):
 
    ```bash
    uv run pytest backend/tests/ -m integration
@@ -114,7 +119,7 @@ Integration tests require Docker and pull several service images.
    - Run tests against a clean test database
    - Tear down all services after tests complete
 
-   For manual stack control:
+   For manual stack control (from project root):
 
    ```bash
    docker compose -f infrastructure/docker-compose.yml \
