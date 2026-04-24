@@ -108,9 +108,14 @@ Integration tests require Docker and pull several service images.
    For manual stack control:
 
    ```bash
-   docker compose -f infrastructure/docker-compose.integration.yml up -d
-   uv run pytest backend/tests/
-   docker compose -f infrastructure/docker-compose.integration.yml down
+   docker compose -f infrastructure/docker-compose.yml \
+     -f infrastructure/docker-compose.integration.yml \
+     --env-file backend/.env.test \
+     -p gideon-test up -d
+   uv run pytest backend/tests/ -m integration
+   docker compose -f infrastructure/docker-compose.yml \
+     -f infrastructure/docker-compose.integration.yml \
+     -p gideon-test down -v
    ```
 
 For a persistent local environment (non-development), see
