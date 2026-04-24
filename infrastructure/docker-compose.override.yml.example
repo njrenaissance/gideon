@@ -10,6 +10,10 @@
 #
 # Docker Compose will automatically apply the override. The anonymous volume
 # is deleted when you run `docker compose down -v`.
+#
+# Note: postgres-data, qdrant-data, and minio-data are no longer external volumes
+# in the base compose, so they are not included in this override. They already
+# auto-create as named volumes and survive `down -v` in dev.
 
 volumes:
   ollama-models:
