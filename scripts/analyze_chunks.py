@@ -1,12 +1,16 @@
 #!/usr/bin/env python3
 """Analyze chunk distribution in Qdrant to determine optimal chunk size."""
 
+import dotenv
+
+dotenv.load_dotenv()
 from collections import defaultdict
 from qdrant_client import QdrantClient
 import statistics
 
 QDRANT_URL = "http://127.0.0.1:6333"
 COLLECTION = "gideon"
+
 
 def analyze_chunks():
     client = QdrantClient(url=QDRANT_URL, timeout=60)
@@ -64,15 +68,15 @@ def analyze_chunks():
         all_chunk_sizes.extend(info["sizes"])
         all_doc_sizes.append(info["total_chars"])
 
-    print(f"\n{'='*60}")
+    print(f"\n{'=' * 60}")
     print(f"QDRANT CHUNK ANALYSIS")
-    print(f"{'='*60}")
+    print(f"{'=' * 60}")
     print(f"Total documents: {len(doc_info)}")
     print(f"Total chunks: {len(all_chunk_sizes)}")
     print(f"Total characters indexed: {sum(all_doc_sizes):,}")
 
     print(f"\n{'CHUNK SIZE STATISTICS':^60}")
-    print(f"{'-'*60}")
+    print(f"{'-' * 60}")
     print(f"Min chunk size: {min(all_chunk_sizes):,} chars")
     print(f"Max chunk size: {max(all_chunk_sizes):,} chars")
     print(f"Mean chunk size: {statistics.mean(all_chunk_sizes):,.0f} chars")
@@ -80,7 +84,7 @@ def analyze_chunks():
     print(f"Std dev: {statistics.stdev(all_chunk_sizes):,.0f} chars")
 
     print(f"\n{'DOCUMENT SIZE STATISTICS':^60}")
-    print(f"{'-'*60}")
+    print(f"{'-' * 60}")
     print(f"Min document size: {min(all_doc_sizes):,} chars")
     print(f"Max document size: {max(all_doc_sizes):,} chars")
     print(f"Mean document size: {statistics.mean(all_doc_sizes):,.0f} chars")
@@ -94,7 +98,7 @@ def analyze_chunks():
     chunk_p95 = sorted_chunks[int(len(sorted_chunks) * 0.95)]
 
     print(f"\n{'CHUNK SIZE PERCENTILES':^60}")
-    print(f"{'-'*60}")
+    print(f"{'-' * 60}")
     print(f"50th percentile (median): {chunk_p50:,} chars")
     print(f"75th percentile: {chunk_p75:,} chars")
     print(f"90th percentile: {chunk_p90:,} chars")
@@ -108,7 +112,7 @@ def analyze_chunks():
     doc_p95 = sorted_docs[int(len(sorted_docs) * 0.95)]
 
     print(f"\n{'DOCUMENT SIZE PERCENTILES':^60}")
-    print(f"{'-'*60}")
+    print(f"{'-' * 60}")
     print(f"50th percentile (median): {doc_p50:,} chars")
     print(f"75th percentile: {doc_p75:,} chars")
     print(f"90th percentile: {doc_p90:,} chars")
@@ -117,7 +121,7 @@ def analyze_chunks():
     # Chunks per document distribution
     chunks_per_doc = [info["chunks"] for info in doc_info.values()]
     print(f"\n{'CHUNKS PER DOCUMENT':^60}")
-    print(f"{'-'*60}")
+    print(f"{'-' * 60}")
     print(f"Min chunks per doc: {min(chunks_per_doc)}")
     print(f"Max chunks per doc: {max(chunks_per_doc)}")
     print(f"Mean chunks per doc: {statistics.mean(chunks_per_doc):.1f}")
@@ -125,18 +129,20 @@ def analyze_chunks():
 
     # Recommendation
     print(f"\n{'RECOMMENDATION':^60}")
-    print(f"{'-'*60}")
+    print(f"{'-' * 60}")
     avg_doc_size = statistics.mean(all_doc_sizes)
-    current_chunk_size = 3000
+    import os
+    current_chunk_size = int(os.getenv("GIDEON_CHUNKING_CHUNK_SIZE", "8000"))
 
     if statistics.median(chunks_per_doc) > 3:
         recommended = int(avg_doc_size / 2)
-        print(f"Current chunk size (3000) splits most docs into {statistics.median(chunks_per_doc):.0f}+ pieces.")
+        print(f"Current chunk size ({current_chunk_size}) splits most docs into {statistics.median(chunks_per_doc):.0f}+ pieces.")
         print(f"Average document is {avg_doc_size:,.0f} chars.")
         print(f"\nRECOMMENDED: {recommended:,} chars")
         print(f"This would result in ~2 chunks per document on average.")
     else:
         print(f"Current chunk size is appropriate.")
+
 
 if __name__ == "__main__":
     analyze_chunks()
