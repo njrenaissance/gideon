@@ -1,7 +1,7 @@
 #!/usr/bin/env pwsh
 <#
 .SYNOPSIS
-Count files in a directory and its subdirectories.
+Count files by extension in a directory and its subdirectories. Outputs JSON.
 
 .PARAMETER Path
 The root directory to scan (default: current directory).
@@ -20,16 +20,18 @@ if (-not (Test-Path $Path)) {
     exit 1
 }
 
-$totalFiles = (Get-ChildItem -Path $Path -File -Recurse -ErrorAction SilentlyContinue).Count
-$totalDirs = (Get-ChildItem -Path $Path -Directory -Recurse -ErrorAction SilentlyContinue).Count
+$files = Get-ChildItem -Path $Path -File -Recurse -ErrorAction SilentlyContinue
 
-Write-Host "Directory: $(Resolve-Path $Path)"
-Write-Host "Total files: $totalFiles"
-Write-Host "Total directories: $totalDirs"
+$result = [ordered]@{}
 
-# Optional: show file count by extension
-Write-Host "`nFiles by type:"
-Get-ChildItem -Path $Path -File -Recurse -ErrorAction SilentlyContinue |
+$files |
     Group-Object -Property Extension |
     Sort-Object -Property Count -Descending |
-    ForEach-Object { Write-Host "  $($_.Name): $($_.Count)" }
+    ForEach-Object {
+        $ext = if ($_.Name) { $_.Name.ToLower() } else { "(no extension)" }
+        $result[$ext] = $_.Count
+    }
+
+$result["total"] = $files.Count
+
+$result | ConvertTo-Json
