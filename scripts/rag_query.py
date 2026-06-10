@@ -53,7 +53,7 @@ DEFAULT_MODEL = "llama3"
 DEFAULT_TOP_K = 3
 # System matter UUIDs (from app/core/constants.py)
 DEFAULT_MATTER_ID = "00000000-0000-0000-0000-000000000001"  # GLOBAL_KNOWLEDGE_MATTER_ID
-DEFAULT_FIRM_ID = "4cad8128-9692-4ab3-91d3-c53a2620d2a5"
+DEFAULT_FIRM_ID = "b01b7a03-be65-4fad-85d7-64be1d1e94a1"
 # -2 = fill context window; matches Ollama behaviour when no limit is wanted.
 # Override with --max-tokens if you want a hard cap.
 DEFAULT_MAX_TOKENS = -2
@@ -159,6 +159,7 @@ def expand_with_neighbors(
 
             # Build point ID (same logic as backend)
             import uuid
+
             point_id_ns = uuid.UUID("b6e7f2a1-4c3d-4e8f-9a1b-2d3e4f5a6b7c")
             neighbor_point_id = str(uuid.uuid5(point_id_ns, f"{doc_id}:{neighbor_idx}"))
 
@@ -394,28 +395,11 @@ def main() -> None:
         sys.exit(1)
 
     # Filter out tiny chunks (headers, citations, etc.)
-    hits = [
-        h for h in hits
-        if len(str((h.payload or {}).get("text", ""))) >= MIN_CHUNK_TEXT_LENGTH
-    ]
+    hits = [h for h in hits if len(str((h.payload or {}).get("text", ""))) >= MIN_CHUNK_TEXT_LENGTH]
 
     print(f"Retrieved {len(hits)} chunk(s) (min {MIN_CHUNK_TEXT_LENGTH} chars).")
 
-    # De-duplicate by document — keep only top-scoring chunk from each
-    print("De-duplicating by document...", flush=True)
-    hits_by_doc: dict[str, models.ScoredPoint] = {}
-    for hit in hits:
-        doc_id = str((hit.payload or {}).get("document_id", ""))
-        if doc_id not in hits_by_doc or hit.score > hits_by_doc[doc_id].score:
-            hits_by_doc[doc_id] = hit
-
-    hits = sorted(hits_by_doc.values(), key=lambda h: h.score, reverse=True)
-    print(f"De-duplicated to {len(hits)} unique documents.")
-
-    # Expand with neighboring chunks (N-1, N, N+1)
-    print("Expanding with neighboring chunks...", flush=True)
-    hits = expand_with_neighbors(client, hits)
-    print(f"Expanded to {len(hits)} total chunks.\n")
+    print(f"Retrieved {len(hits)} unique chunks.\n")
 
     # 3. Build filename map from Qdrant payload
     filenames = {
