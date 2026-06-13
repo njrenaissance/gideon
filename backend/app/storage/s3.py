@@ -49,6 +49,16 @@ class S3StorageService:
         """Build the canonical S3 object key for a document."""
         return f"{firm_id}/{matter_id}/{document_id}/original.{extension}"
 
+    @staticmethod
+    def redacted_object_key(s3_prefix: str, extension: str) -> str:
+        """Build the S3 key for a document's redacted copy (same folder as original)."""
+        return f"{s3_prefix}/redacted.{extension}"
+
+    @staticmethod
+    def redacted_manifest_key(s3_prefix: str) -> str:
+        """Build the S3 key for a document's redaction manifest."""
+        return f"{s3_prefix}/redaction_manifest.json"
+
     # ------------------------------------------------------------------
     # Upload
     # ------------------------------------------------------------------
@@ -132,6 +142,58 @@ class S3StorageService:
             response.close()
             response.release_conn()
         return data, ct
+
+    # ------------------------------------------------------------------
+    # Existence check
+    # ------------------------------------------------------------------
+
+    async def object_exists(self, key: str) -> bool:
+        """Return True if the object exists in the bucket."""
+        with tracer.start_as_current_span(
+            "s3.object_exists",
+            attributes={"s3.key": key, "s3.bucket": self._bucket},
+        ):
+            loop = asyncio.get_running_loop()
+            return await loop.run_in_executor(None, self._stat_object, key)
+
+    def _stat_object(self, key: str) -> bool:
+        try:
+            self._client.stat_object(self._bucket, key)
+            return True
+        except Exception:
+            return False
+
+    # ------------------------------------------------------------------
+    # Raw bytes upload (redacted documents)
+    # ------------------------------------------------------------------
+
+    async def upload_bytes(
+        self,
+        *,
+        key: str,
+        data: bytes,
+        content_type: str,
+    ) -> None:
+        """Upload raw bytes as an S3 object."""
+        with tracer.start_as_current_span(
+            "s3.upload_bytes",
+            attributes={
+                "s3.key": key,
+                "s3.bucket": self._bucket,
+                "s3.size_bytes": len(data),
+            },
+        ):
+            buf = io.BytesIO(data)
+            loop = asyncio.get_running_loop()
+            await loop.run_in_executor(
+                None,
+                self._put_object,
+                key,
+                buf,
+                len(data),
+                content_type,
+                {},
+            )
 
     # ------------------------------------------------------------------
     # Delete (cleanup on failed commits)

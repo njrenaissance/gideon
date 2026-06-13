@@ -43,6 +43,9 @@ dependencies = [
     "psycopg2-binary>=2.9",
     # Document parsing
     "python-multipart>=0.0.18",
+    # Document redaction
+    "pymupdf>=1.24",
+    "python-docx>=1.1",
     # S3-compatible object storage
     "minio>=7.0",
     # Hashing / crypto

@@ -169,9 +169,9 @@ class TestLegalHoldGuard:
         s3_key = f"firm/matter/{doc_id}/original.pdf"
 
         with patch(
-            "app.workers.tasks.ingest_document._check_legal_hold",
+            "app.workers.tasks.ingest_document._fetch_document_flags",
             new_callable=AsyncMock,
-            return_value=True,
+            return_value=(True, False),
         ):
             result = await _ingest(doc_id, s3_key)
 
@@ -189,14 +189,19 @@ class TestLegalHoldGuard:
 
         with (
             patch(
-                "app.workers.tasks.ingest_document._check_legal_hold",
+                "app.workers.tasks.ingest_document._fetch_document_flags",
                 new_callable=AsyncMock,
-                return_value=False,
+                return_value=(False, True),
             ),
             patch(
                 "app.workers.tasks.ingest_document._update_ingestion_status",
                 new_callable=AsyncMock,
             ),
+            patch(
+                "app.storage.get_storage_service",
+                return_value=MagicMock(object_exists=AsyncMock(return_value=False)),
+            ),
+            patch("app.workers.celery_app.send_task"),
             patch(
                 "app.workers.tasks.ingest_document._run_extract",
                 new_callable=AsyncMock,

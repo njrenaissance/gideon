@@ -59,6 +59,8 @@ services:
       - "8000:8000"
     volumes:
       - ../backend/allowed_types.txt:/app/allowed_types.txt:ro
+      # Optional: mount a redaction keywords file. Uncomment to enable.
+      - ../backend/redaction_keywords.txt:/app/redaction_keywords.txt:ro
     environment:
       - GIDEON_API_HOST=${GIDEON_API_HOST:-0.0.0.0}
       - GIDEON_API_PORT=${GIDEON_API_PORT:-8000}
@@ -89,6 +91,9 @@ services:
       - GIDEON_CHUNKING_CHUNK_SIZE=${GIDEON_CHUNKING_CHUNK_SIZE:-3000}
       - GIDEON_CHUNKING_CHUNK_OVERLAP=${GIDEON_CHUNKING_CHUNK_OVERLAP:-600}
       - GIDEON_CHUNKING_MIN_CHUNK_SIZE=${GIDEON_CHUNKING_MIN_CHUNK_SIZE:-500}
+      # Redaction
+      - GIDEON_REDACTION_ENABLED=${GIDEON_REDACTION_ENABLED:-true}
+      - GIDEON_REDACTION_KEYWORDS_FILE=${GIDEON_REDACTION_KEYWORDS_FILE:-}
       # Extraction (document text extraction)
       - GIDEON_EXTRACTION_TIKA_URL=${GIDEON_EXTRACTION_TIKA_URL:-http://tika:9998}
       - GIDEON_EXTRACTION_OCR_ENABLED=${GIDEON_EXTRACTION_OCR_ENABLED:-true}
@@ -363,6 +368,9 @@ services:
     volumes:
       - ../backend/allowed_types.txt:/app/allowed_types.txt:ro
       - celery-tmp:/tmp/celery
+      # Optional: mount a redaction keywords file (one keyword per line).
+      # Create backend/redaction_keywords.txt and uncomment to enable.
+      - ../backend/redaction_keywords.txt:/app/redaction_keywords.txt:ro
     environment:
       - SKIP_MIGRATIONS=true
       - GIDEON_AUTH_SECRET_KEY=${GIDEON_AUTH_SECRET_KEY}
@@ -399,6 +407,9 @@ services:
       - GIDEON_CHUNKING_CHUNK_SIZE=${GIDEON_CHUNKING_CHUNK_SIZE:-3000}
       - GIDEON_CHUNKING_CHUNK_OVERLAP=${GIDEON_CHUNKING_CHUNK_OVERLAP:-600}
       - GIDEON_CHUNKING_MIN_CHUNK_SIZE=${GIDEON_CHUNKING_MIN_CHUNK_SIZE:-500}
+      # Redaction
+      - GIDEON_REDACTION_ENABLED=${GIDEON_REDACTION_ENABLED:-true}
+      - GIDEON_REDACTION_KEYWORDS_FILE=${GIDEON_REDACTION_KEYWORDS_FILE:-}
       # Cloud ingestion (internet mode only)
       - AZURE_CLIENT_ID=${AZURE_CLIENT_ID:-}
       - AZURE_CLIENT_SECRET=${AZURE_CLIENT_SECRET:-}

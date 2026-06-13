@@ -232,7 +232,9 @@ class TestIngestDocumentSpans:
         mock_vectorstore.upsert_vectors.return_value = 1
         mock_vectorstore.close = AsyncMock()
 
-        # Mock DB session for metadata lookup and status updates
+        # Mock DB session for metadata lookup and status updates.
+        # has_redacted_copy=True simulates the second-pass ingest (after
+        # redact_document has run), which is when the full pipeline executes.
         mock_doc = SimpleNamespace(
             id="doc-1",
             filename="original.pdf",
@@ -243,6 +245,7 @@ class TestIngestDocumentSpans:
             bates_number=None,
             ingestion_status="pending",
             legal_hold=False,
+            has_redacted_copy=True,
         )
         mock_matter = SimpleNamespace(client_id="client-1")
 

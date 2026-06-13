@@ -1,0 +1,17 @@
+# Redaction keywords — one per line.
+# Matching is case-insensitive and word-boundary aware.
+# Duplicate entries (different casing) are de-duplicated automatically.
+# Lines starting with # are ignored.
+#
+# Each unique keyword is assigned a deterministic placeholder:
+#   [REDACTED_1], [REDACTED_2], ... (sorted alphabetically before assignment)
+#
+# Only PDF and DOCX files are redacted. Other formats are skipped silently.
+#
+# Example entries — replace with your actual keywords:
+# John Smith
+# Jane Doe
+# 123-45-6789
+# confidential
+Legal Aid Society
+Legal Aid

@@ -62,6 +62,9 @@ class Document(Base):
     )
     bates_number: Mapped[str | None] = mapped_column(String(100), nullable=True)
     legal_hold: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    has_redacted_copy: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, default=False, server_default="false"
+    )
     uploaded_by: Mapped[uuid.UUID] = mapped_column(
         ForeignKey("users.id", ondelete="CASCADE"), nullable=False
     )

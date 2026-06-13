@@ -29,6 +29,7 @@ services:
       dockerfile: backend/docker/Dockerfile
 
   flower:
+    image: gideon/backend-monitoring:local
     build:
       context: ..
       dockerfile: backend/docker/Dockerfile

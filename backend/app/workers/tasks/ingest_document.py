@@ -88,11 +88,13 @@ def ingest_document(document_id: str, s3_key: str) -> dict[str, object]:
     return asyncio.run(_ingest(document_id, s3_key))
 
 
-async def _check_legal_hold(document_id: str) -> bool:
-    """Return True if the document is under legal hold.
+async def _fetch_document_flags(
+    document_id: str,
+) -> tuple[bool, bool] | None:
+    """Fetch (legal_hold, has_redacted_copy) for the document.
 
-    Reuses the same engine-per-call pattern as ``_update_ingestion_status``
-    and ``_run_metadata_lookup`` to avoid event-loop conflicts in Celery.
+    Returns None if the document does not exist, so callers can exit
+    cleanly instead of dispatching downstream tasks for a ghost record.
     """
     from app.db.models.document import Document
 
@@ -101,9 +103,8 @@ async def _check_legal_hold(document_id: str) -> bool:
         async with AsyncSession(engine) as session:
             doc = await session.get(Document, document_id)
             if doc is None:
-                logger.warning("_check_legal_hold: document %s not found", document_id)
-                return False
-            return bool(doc.legal_hold)
+                return None
+            return bool(doc.legal_hold), bool(doc.has_redacted_copy)
     finally:
         await engine.dispose()
 
@@ -118,8 +119,24 @@ async def _ingest(document_id: str, s3_key: str) -> dict[str, object]:
         },
     ) as span:
         try:
+            flags = await _fetch_document_flags(document_id)
+            if flags is None:
+                logger.warning(
+                    "ingest_document skipped: document %s not found in DB",
+                    document_id,
+                )
+                span.set_attribute("ingestion.skipped", True)
+                span.set_attribute("ingestion.skip_reason", "document_not_found")
+                return {
+                    "status": "skipped",
+                    "reason": "document_not_found",
+                    "document_id": document_id,
+                }
+
+            legal_hold, has_redacted_copy = flags
+
             # Legal hold guard — skip ingestion for held documents
-            if await _check_legal_hold(document_id):
+            if legal_hold:
                 logger.warning(
                     "ingest_document skipped: document %s is under legal hold",
                     document_id,
@@ -132,10 +149,44 @@ async def _ingest(document_id: str, s3_key: str) -> dict[str, object]:
                     "document_id": document_id,
                 }
 
+            span.set_attribute("ingestion.has_redacted_copy", has_redacted_copy)
+
+            # Redaction runs before extraction so the vector index never
+            # contains un-redacted content.  Hand off originals immediately;
+            # redact_document will dispatch a second ingest pass once the
+            # sidecar redacted.{ext} exists in the same S3 folder.
+            if settings.redaction.enabled and not has_redacted_copy:
+                from app.workers import celery_app
+
+                celery_app.send_task(
+                    "gideon.redact_document", args=[document_id, s3_key]
+                )
+                logger.info(
+                    "ingest_document: handed off to redact_document for %s",
+                    document_id,
+                )
+                return {
+                    "status": "redaction_pending",
+                    "document_id": document_id,
+                }
+
+            # When has_redacted_copy=True the redacted sidecar exists.
+            # Always extract from it so the vector index never sees the
+            # original un-redacted content, even on re-ingest.
             s3_prefix = s3_key.rsplit("/", 1)[0]
+            if has_redacted_copy:
+                orig_filename = s3_key.rsplit("/", 1)[-1]
+                extension = orig_filename.rsplit(".", 1)[-1]
+                from app.storage.s3 import S3StorageService
+
+                effective_s3_key = S3StorageService.redacted_object_key(
+                    s3_prefix, extension
+                )
+            else:
+                effective_s3_key = s3_key
 
             await _update_ingestion_status(document_id, IngestionStatus.extracting)
-            result = await _run_extract(document_id, s3_key, s3_prefix, span)
+            result = await _run_extract(document_id, effective_s3_key, s3_prefix, span)
             payload_metadata = await _run_metadata_lookup(document_id)
 
             await _update_ingestion_status(document_id, IngestionStatus.chunking)
@@ -143,8 +194,6 @@ async def _ingest(document_id: str, s3_key: str) -> dict[str, object]:
 
             await _update_ingestion_status(document_id, IngestionStatus.embedding)
             point_count = await _run_embedding(chunks_data, payload_metadata, span)
-
-            await _update_ingestion_status(document_id, IngestionStatus.indexed)
 
             logger.info(
                 "ingest_document done: %s (%d chunks, %d points)",

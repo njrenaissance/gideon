@@ -11,4 +11,5 @@ TASK_REGISTRY: dict[str, str] = {
     "extract_document": "gideon.extract_document",
     "chunk_document": "gideon.chunk_document",
     "embed_chunks": "gideon.embed_chunks",
+    "redact_document": "gideon.redact_document",
 }

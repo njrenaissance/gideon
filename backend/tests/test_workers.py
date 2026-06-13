@@ -108,9 +108,76 @@ def test_ingest_document_task_is_registered():
     assert "gideon.ingest_document" in celery_app.tasks
 
 
-def test_ingest_document_full_pipeline():
-    """ingest_document should extract, chunk, embed, and upsert to Qdrant."""
+def _make_db_mocks(has_redacted_copy: bool = False):
+    """Return (mock_engine, mock_session_ctx) with a document + matter fixture."""
     from types import SimpleNamespace
+    from unittest.mock import AsyncMock
+
+    mock_doc = SimpleNamespace(
+        id="doc-1",
+        filename="original.pdf",
+        firm_id="firm-1",
+        matter_id="matter-1",
+        classification="unclassified",
+        source="defense",
+        bates_number=None,
+        ingestion_status="pending",
+        legal_hold=False,
+        has_redacted_copy=has_redacted_copy,
+    )
+    mock_matter = SimpleNamespace(client_id="client-1")
+
+    async def _mock_get(model: type, pk: object) -> object:
+        from app.db.models.document import Document
+        from app.db.models.matter import Matter
+
+        if model is Document:
+            return mock_doc
+        if model is Matter:
+            return mock_matter
+        return None
+
+    mock_session = AsyncMock()
+    mock_session.get = AsyncMock(side_effect=_mock_get)
+    mock_session_ctx = AsyncMock()
+    mock_session_ctx.__aenter__ = AsyncMock(return_value=mock_session)
+    mock_session_ctx.__aexit__ = AsyncMock(return_value=False)
+
+    mock_engine = AsyncMock()
+    mock_engine.dispose = AsyncMock()
+
+    return mock_engine, mock_session_ctx
+
+
+def test_ingest_document_original_dispatches_redaction():
+    """Original documents hand off to redact_document and return early."""
+    from unittest.mock import patch
+
+    mock_engine, mock_session_ctx = _make_db_mocks(has_redacted_copy=False)
+    s3_key = "firm-1/matter-1/doc-1/original.pdf"
+
+    with (
+        patch(
+            "app.workers.tasks.ingest_document.create_async_engine",
+            return_value=mock_engine,
+        ),
+        patch(
+            "app.workers.tasks.ingest_document.AsyncSession",
+            return_value=mock_session_ctx,
+        ),
+        patch("app.workers.celery_app.send_task") as mock_send,
+    ):
+        from app.workers.tasks.ingest_document import ingest_document
+
+        result = ingest_document("doc-1", s3_key)
+
+    assert result["status"] == "redaction_pending"
+    assert result["document_id"] == "doc-1"
+    mock_send.assert_called_once_with("gideon.redact_document", args=["doc-1", s3_key])
+
+
+def test_ingest_document_redacted_copy_full_pipeline():
+    """Redacted copies run the full extract/chunk/embed pipeline."""
     from unittest.mock import AsyncMock, MagicMock, patch
 
     from app.chunking.models import ChunkResult
@@ -158,52 +225,14 @@ def test_ingest_document_full_pipeline():
     mock_vectorstore.upsert_vectors.return_value = 1
     mock_vectorstore.close = AsyncMock()
 
-    # Mock the DB session to return document + matter
-    mock_doc = SimpleNamespace(
-        id="doc-1",
-        filename="original.pdf",
-        firm_id="firm-1",
-        matter_id="matter-1",
-        classification="unclassified",
-        source="defense",
-        bates_number=None,
-        ingestion_status="pending",
-        legal_hold=False,
-    )
-    mock_matter = SimpleNamespace(client_id="client-1")
-
-    async def _mock_get(model: type, pk: object) -> object:
-        """Return mock_doc for Document lookups, mock_matter for Matter."""
-        from app.db.models.document import Document
-        from app.db.models.matter import Matter
-
-        if model is Document:
-            return mock_doc
-        if model is Matter:
-            return mock_matter
-        return None
-
-    mock_session = AsyncMock()
-    mock_session.get = AsyncMock(side_effect=_mock_get)
-    mock_session_ctx = AsyncMock()
-    mock_session_ctx.__aenter__ = AsyncMock(return_value=mock_session)
-    mock_session_ctx.__aexit__ = AsyncMock(return_value=False)
-
-    mock_engine = AsyncMock()
-    mock_engine.dispose = AsyncMock()
-
-    s3_key = "firm-1/matter-1/doc-1/original.pdf"
+    mock_engine, mock_session_ctx = _make_db_mocks(has_redacted_copy=True)
+    # redact_document passes the sidecar key on the second ingest pass
+    s3_key = "firm-1/matter-1/doc-1/redacted.pdf"
 
     with (
         patch("app.storage.get_storage_service", return_value=mock_storage),
-        patch(
-            "app.extraction.get_extraction_service",
-            return_value=mock_extraction,
-        ),
-        patch(
-            "app.chunking.get_chunking_service",
-            return_value=mock_chunking,
-        ),
+        patch("app.extraction.get_extraction_service", return_value=mock_extraction),
+        patch("app.chunking.get_chunking_service", return_value=mock_chunking),
         patch(
             "app.workers.tasks.ingest_document.EmbeddingService",
             return_value=mock_embedding_svc,
@@ -220,6 +249,7 @@ def test_ingest_document_full_pipeline():
             "app.workers.tasks.ingest_document.AsyncSession",
             return_value=mock_session_ctx,
         ),
+        patch("app.workers.celery_app.send_task"),
     ):
         from app.workers.tasks.ingest_document import ingest_document
 
@@ -230,25 +260,17 @@ def test_ingest_document_full_pipeline():
     assert result["chunk_count"] == 1
     assert result["point_count"] == 1
 
-    # Verify extraction was called
     mock_extraction.extract_text.assert_awaited_once_with(
-        b"pdf bytes",
-        "original.pdf",
-        "application/pdf",
+        b"pdf bytes", "redacted.pdf", "application/pdf"
     )
 
-    # Verify extracted.json was uploaded to S3
     upload_calls = mock_storage.upload_json.call_args_list
     assert any(
         c.kwargs["key"] == "firm-1/matter-1/doc-1/extracted.json" for c in upload_calls
     )
-
-    # Verify chunks.json was uploaded to S3
     assert any(
         c.kwargs["key"] == "firm-1/matter-1/doc-1/chunks.json" for c in upload_calls
     )
-
-    # Verify embedding + upsert were called
     mock_embedding_svc.embed_chunks.assert_awaited_once()
     mock_vectorstore.upsert_vectors.assert_awaited_once()
 

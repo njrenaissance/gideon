@@ -472,6 +472,45 @@ class IngestionSettings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="GIDEON_INGESTION_")
 
 
+class RedactionSettings(BaseSettings):
+    """Document redaction sub-config (GIDEON_REDACTION_ prefix).
+
+    When ``enabled`` is True and ``keywords_file`` is set, the ingestion
+    pipeline auto-dispatches ``gideon.redact_document`` after a document is
+    indexed.  Keywords are loaded from a flat file (one per line, ``#``
+    comments allowed) — the same convention as ``allowed_types_file``.
+
+    When ``keywords_file`` is not set or the file is empty, the redaction
+    task is dispatched but immediately skips with reason
+    ``no_keywords_configured``.
+    """
+
+    enabled: bool = True
+    keywords_file: Path | None = None
+    keywords: frozenset[str] = Field(default_factory=frozenset)
+
+    @model_validator(mode="before")
+    @classmethod
+    def _load_keywords(cls, values: dict[str, Any]) -> dict[str, Any]:
+        path = values.get("keywords_file")
+        if path is None or path == "":
+            values["keywords_file"] = None
+            return values
+        if not isinstance(path, Path):
+            path = Path(path)
+        if not path.is_file():
+            raise ValueError(f"GIDEON_REDACTION_KEYWORDS_FILE not found: {path}")
+        keywords = [
+            line.strip()
+            for line in path.read_text(encoding="utf-8").splitlines()
+            if line.strip() and not line.strip().startswith("#")
+        ]
+        values["keywords"] = frozenset(keywords)
+        return values
+
+    model_config = SettingsConfigDict(env_prefix="GIDEON_REDACTION_")
+
+
 # ---------------------------------------------------------------------------
 # Secret redaction
 # ---------------------------------------------------------------------------
@@ -550,6 +589,7 @@ class Settings(BaseSettings):
     s3: S3Settings = Field(default_factory=S3Settings)  # type: ignore[arg-type]
     extraction: ExtractionSettings = Field(default_factory=ExtractionSettings)  # type: ignore[arg-type]
     ingestion: IngestionSettings = Field(default_factory=IngestionSettings)
+    redaction: RedactionSettings = Field(default_factory=RedactionSettings)
     chunking: ChunkingSettings = Field(default_factory=ChunkingSettings)  # type: ignore[arg-type]
     embedding: EmbeddingSettings = Field(default_factory=EmbeddingSettings)  # type: ignore[arg-type]
     chatbot: ChatbotSettings = Field(default_factory=ChatbotSettings)  # type: ignore[arg-type]

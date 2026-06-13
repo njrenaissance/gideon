@@ -136,6 +136,11 @@ DEFAULTS = {
         "allowed_content_types": DEFAULT_CONTENT_TYPES,
         "allowed_extensions": DEFAULT_EXTENSIONS,
     },
+    "redaction": {
+        "enabled": True,
+        "keywords_file": None,
+        "keywords": frozenset(),
+    },
     "chunking": {
         "strategy": "recursive",
         "chunk_size": 3000,
